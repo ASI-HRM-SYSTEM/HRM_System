@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import EmployeeManagement from "./components/EmployeeManagement";
 import Dashboard from "./components/Dashboard";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { PageType } from "./components/Sidebar";
 import UpdateChecker from "./components/UpdateChecker";
+import WorkInProgress from "./components/WorkInProgress";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<"dashboard" | "employees">("dashboard");
+  const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
   const [dbInitialized, setDbInitialized] = useState(false);
 
   useEffect(() => {
@@ -32,12 +33,70 @@ function App() {
     );
   }
 
+  const renderPage = () => {
+    switch (currentPage) {
+      case "dashboard":
+        return <Dashboard />;
+      case "employees":
+        return <EmployeeManagement />;
+      case "jobdesk":
+        return (
+          <WorkInProgress 
+            title="Job Desk" 
+            description="Job designation and department management will be available here."
+            icon="💼"
+          />
+        );
+      case "leave":
+        return (
+          <WorkInProgress 
+            title="Leave Management" 
+            description="Employee leave requests, approvals, and leave balance tracking will be available here."
+            icon="🏖️"
+          />
+        );
+      case "attendance":
+        return (
+          <WorkInProgress 
+            title="Attendance" 
+            description="Fingerprint attendance import from Excel and daily attendance tracking will be available here."
+            icon="📋"
+          />
+        );
+      case "payroll":
+        return (
+          <WorkInProgress 
+            title="Payroll" 
+            description="Salary calculation, payslips, and payroll reports will be available here."
+            icon="💰"
+          />
+        );
+      case "admin":
+        return (
+          <WorkInProgress 
+            title="Admin Panel" 
+            description="User management, roles, permissions, and system administration will be available here."
+            icon="👤"
+          />
+        );
+      case "settings":
+        return (
+          <WorkInProgress 
+            title="Settings" 
+            description="Application settings, backup/restore, and configuration options will be available here."
+            icon="⚙️"
+          />
+        );
+      default:
+        return <Dashboard />;
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-      <main className="flex-1 p-6 overflow-auto">
-        {currentPage === "dashboard" && <Dashboard />}
-        {currentPage === "employees" && <EmployeeManagement />}
+      <main className="flex-1 overflow-auto">
+        {renderPage()}
       </main>
       <UpdateChecker />
     </div>
