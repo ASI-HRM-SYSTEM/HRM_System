@@ -28,8 +28,8 @@ sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchel
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/HRM_System.git
-   cd HRM_System
+   git clone https://github.com/AsithaKanchana1/Newlanka_HRM_System.git
+   cd Newlanka_HRM_System
    ```
 
 2. **Install dependencies**
