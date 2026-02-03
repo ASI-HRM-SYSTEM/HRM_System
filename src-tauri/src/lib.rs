@@ -8,15 +8,23 @@ pub mod models;
 pub struct DbConnection(pub Mutex<Connection>);
 
 pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<Connection> {
-    let app_dir = app_handle
-        .path()
-        .app_data_dir()
-        .expect("Failed to get app data directory");
+    let app_dir = match app_handle.path().app_data_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("Failed to get app data directory: {:?}", e);
+            // Fallback to current directory
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+        }
+    };
     
-    std::fs::create_dir_all(&app_dir).expect("Failed to create app data directory");
+    if let Err(e) = std::fs::create_dir_all(&app_dir) {
+        eprintln!("Failed to create app data directory: {:?}", e);
+    }
     
     let db_path = app_dir.join("hrm_system.db");
-    let conn = Connection::open(db_path)?;
+    eprintln!("Database path: {:?}", db_path);
+    
+    let conn = Connection::open(&db_path)?;
     
     // Create employees table
     conn.execute(

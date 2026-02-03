@@ -9,6 +9,7 @@ import WorkInProgress from "./components/WorkInProgress";
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
   const [dbInitialized, setDbInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     const initDb = async () => {
@@ -17,10 +18,30 @@ function App() {
         setDbInitialized(true);
       } catch (error) {
         console.error("Failed to initialize database:", error);
+        setInitError(String(error));
       }
     };
     initDb();
   }, []);
+
+  if (initError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center max-w-md p-6">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Database Error</h2>
+          <p className="text-gray-600 mb-4">Failed to initialize the database:</p>
+          <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{initError}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 btn-primary"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!dbInitialized) {
     return (

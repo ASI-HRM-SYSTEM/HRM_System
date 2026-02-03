@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Employee } from "../types/employee";
+import CustomDatePicker from "./CustomDatePicker";
 
 interface EmployeeFormProps {
   employee: Employee | null;
@@ -139,33 +140,30 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
           {/* Date of Birth */}
           <div>
             <label className="label">Date of Birth</label>
-            <input
-              type="date"
-              className="input-field"
-              value={formData.dob || ""}
-              onChange={(e) => handleChange("dob", e.target.value)}
+            <CustomDatePicker
+              value={formData.dob}
+              onChange={(value) => handleChange("dob", value)}
+              placeholder="Select date of birth"
             />
           </div>
 
           {/* Date of Join */}
           <div>
             <label className="label">Date of Join</label>
-            <input
-              type="date"
-              className="input-field"
-              value={formData.date_of_join || ""}
-              onChange={(e) => handleChange("date_of_join", e.target.value)}
+            <CustomDatePicker
+              value={formData.date_of_join}
+              onChange={(value) => handleChange("date_of_join", value)}
+              placeholder="Select join date"
             />
           </div>
 
           {/* Date of Resign */}
           <div>
             <label className="label">Date of Resign</label>
-            <input
-              type="date"
-              className="input-field"
-              value={formData.date_of_resign || ""}
-              onChange={(e) => handleChange("date_of_resign", e.target.value)}
+            <CustomDatePicker
+              value={formData.date_of_resign}
+              onChange={(value) => handleChange("date_of_resign", value)}
+              placeholder="Select resign date"
             />
           </div>
 

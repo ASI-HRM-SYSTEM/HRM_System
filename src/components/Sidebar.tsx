@@ -84,9 +84,16 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-primary-700">HRM System</h1>
-        <p className="text-sm text-gray-500">New Lanka Clothing</p>
+      <div className="p-6 flex items-center gap-3">
+        <img 
+          src="/logo.png" 
+          alt="New Lanka Clothing" 
+          className="w-12 h-12 object-contain"
+        />
+        <div>
+          <h1 className="text-xl font-bold text-primary-700">HRM System</h1>
+          <p className="text-sm text-gray-500">New Lanka Clothing</p>
+        </div>
       </div>
       
       <nav className="mt-2 flex-1">
