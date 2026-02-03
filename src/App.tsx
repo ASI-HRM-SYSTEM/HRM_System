@@ -5,6 +5,11 @@ import Dashboard from "./components/Dashboard";
 import Sidebar, { PageType } from "./components/Sidebar";
 import UpdateChecker from "./components/UpdateChecker";
 import WorkInProgress from "./components/WorkInProgress";
+import Footer from "./components/Footer";
+
+// Developer info - Update these with your details
+const DEVELOPER_NAME = "Asitha Kanchana";
+const LINKEDIN_URL = "https://www.linkedin.com/in/asithakanchana";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
@@ -116,9 +121,12 @@ function App() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-      <main className="flex-1 overflow-auto">
-        {renderPage()}
-      </main>
+      <div className="flex-1 flex flex-col">
+        <main className="flex-1 overflow-auto">
+          {renderPage()}
+        </main>
+        <Footer developerName={DEVELOPER_NAME} linkedinUrl={LINKEDIN_URL} />
+      </div>
       <UpdateChecker />
     </div>
   );

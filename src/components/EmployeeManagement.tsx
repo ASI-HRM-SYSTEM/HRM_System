@@ -18,6 +18,7 @@ function EmployeeManagement() {
   
   const [departments, setDepartments] = useState<string[]>([]);
   const [transportRoutes, setTransportRoutes] = useState<string[]>([]);
+  const [policeAreas, setPoliceAreas] = useState<string[]>([]);
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
@@ -33,12 +34,14 @@ function EmployeeManagement() {
 
   const loadFilterOptions = async () => {
     try {
-      const [depts, routes] = await Promise.all([
+      const [depts, routes, areas] = await Promise.all([
         invoke<string[]>("get_distinct_departments"),
         invoke<string[]>("get_distinct_transport_routes"),
+        invoke<string[]>("get_distinct_police_areas"),
       ]);
       setDepartments(depts);
       setTransportRoutes(routes);
+      setPoliceAreas(areas);
     } catch (error) {
       console.error("Failed to load filter options:", error);
     }
@@ -126,6 +129,7 @@ function EmployeeManagement() {
           onCancel={handleFormCancel}
           departments={departments}
           transportRoutes={transportRoutes}
+          policeAreas={policeAreas}
         />
       ) : (
         <>

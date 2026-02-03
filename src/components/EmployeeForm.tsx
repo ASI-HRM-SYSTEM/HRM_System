@@ -8,6 +8,7 @@ interface EmployeeFormProps {
   onCancel: () => void;
   departments: string[];
   transportRoutes: string[];
+  policeAreas: string[];
 }
 
 const emptyEmployee: Employee = {
@@ -28,13 +29,20 @@ const emptyEmployee: Employee = {
   department: null,
 };
 
-function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRoutes }: EmployeeFormProps) {
+function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRoutes, policeAreas }: EmployeeFormProps) {
   const [formData, setFormData] = useState<Employee>(emptyEmployee);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newDepartment, setNewDepartment] = useState("");
   const [newRoute, setNewRoute] = useState("");
+  const [newPoliceArea, setNewPoliceArea] = useState("");
   const [showNewDepartment, setShowNewDepartment] = useState(false);
   const [showNewRoute, setShowNewRoute] = useState(false);
+  const [showNewPoliceArea, setShowNewPoliceArea] = useState(false);
+  
+  // Local lists that include newly added items
+  const [localDepartments, setLocalDepartments] = useState<string[]>([]);
+  const [localRoutes, setLocalRoutes] = useState<string[]>([]);
+  const [localPoliceAreas, setLocalPoliceAreas] = useState<string[]>([]);
 
   useEffect(() => {
     if (employee) {
@@ -43,6 +51,19 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
       setFormData(emptyEmployee);
     }
   }, [employee]);
+
+  // Initialize local lists from props
+  useEffect(() => {
+    setLocalDepartments(departments);
+  }, [departments]);
+
+  useEffect(() => {
+    setLocalRoutes(transportRoutes);
+  }, [transportRoutes]);
+
+  useEffect(() => {
+    setLocalPoliceAreas(policeAreas);
+  }, [policeAreas]);
 
   const handleChange = (field: keyof Employee, value: string | null) => {
     setFormData((prev) => ({ ...prev, [field]: value || null }));
@@ -77,7 +98,12 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
   const handleAddNewDepartment = () => {
     if (newDepartment.trim()) {
-      handleChange("department", newDepartment.trim());
+      const trimmed = newDepartment.trim();
+      // Add to local list if not already present
+      if (!localDepartments.includes(trimmed)) {
+        setLocalDepartments((prev) => [...prev, trimmed]);
+      }
+      handleChange("department", trimmed);
       setNewDepartment("");
       setShowNewDepartment(false);
     }
@@ -85,9 +111,27 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
   const handleAddNewRoute = () => {
     if (newRoute.trim()) {
-      handleChange("transport_route", newRoute.trim());
+      const trimmed = newRoute.trim();
+      // Add to local list if not already present
+      if (!localRoutes.includes(trimmed)) {
+        setLocalRoutes((prev) => [...prev, trimmed]);
+      }
+      handleChange("transport_route", trimmed);
       setNewRoute("");
       setShowNewRoute(false);
+    }
+  };
+
+  const handleAddNewPoliceArea = () => {
+    if (newPoliceArea.trim()) {
+      const trimmed = newPoliceArea.trim();
+      // Add to local list if not already present
+      if (!localPoliceAreas.includes(trimmed)) {
+        setLocalPoliceAreas((prev) => [...prev, trimmed]);
+      }
+      handleChange("police_area", trimmed);
+      setNewPoliceArea("");
+      setShowNewPoliceArea(false);
     }
   };
 
@@ -194,12 +238,40 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
           {/* Police Area */}
           <div>
             <label className="label">Police Area</label>
-            <input
-              type="text"
-              className="input-field"
-              value={formData.police_area || ""}
-              onChange={(e) => handleChange("police_area", e.target.value)}
-            />
+            {showNewPoliceArea ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input-field"
+                  value={newPoliceArea}
+                  onChange={(e) => setNewPoliceArea(e.target.value)}
+                  placeholder="New police area name"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNewPoliceArea())}
+                />
+                <button type="button" onClick={handleAddNewPoliceArea} className="btn-primary">
+                  Add
+                </button>
+                <button type="button" onClick={() => setShowNewPoliceArea(false)} className="btn-secondary">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <select
+                  className="input-field flex-1"
+                  value={formData.police_area || ""}
+                  onChange={(e) => handleChange("police_area", e.target.value)}
+                >
+                  <option value="">Select Police Area</option>
+                  {localPoliceAreas.map((area) => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => setShowNewPoliceArea(true)} className="btn-secondary">
+                  +
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Department */}
@@ -213,6 +285,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
                   value={newDepartment}
                   onChange={(e) => setNewDepartment(e.target.value)}
                   placeholder="New department name"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNewDepartment())}
                 />
                 <button type="button" onClick={handleAddNewDepartment} className="btn-primary">
                   Add
@@ -229,7 +302,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
                   onChange={(e) => handleChange("department", e.target.value)}
                 >
                   <option value="">Select Department</option>
-                  {departments.map((dept) => (
+                  {localDepartments.map((dept) => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>
@@ -262,6 +335,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
                   value={newRoute}
                   onChange={(e) => setNewRoute(e.target.value)}
                   placeholder="New route name"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNewRoute())}
                 />
                 <button type="button" onClick={handleAddNewRoute} className="btn-primary">
                   Add
@@ -278,7 +352,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
                   onChange={(e) => handleChange("transport_route", e.target.value)}
                 >
                   <option value="">Select Transport Route</option>
-                  {transportRoutes.map((route) => (
+                  {localRoutes.map((route) => (
                     <option key={route} value={route}>{route}</option>
                   ))}
                 </select>

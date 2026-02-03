@@ -86,7 +86,7 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
       <div className="p-6 flex items-center gap-3">
         <img 
-          src="/logo.png" 
+          src="/logo.jpg" 
           alt="New Lanka Clothing" 
           className="w-12 h-12 object-contain"
         />

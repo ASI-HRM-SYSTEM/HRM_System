@@ -23,6 +23,7 @@ fn main() {
             commands::delete_employee,
             commands::get_distinct_departments,
             commands::get_distinct_transport_routes,
+            commands::get_distinct_police_areas,
             commands::get_dashboard_stats,
         ])
         .run(tauri::generate_context!())

@@ -190,6 +190,23 @@ pub fn get_distinct_transport_routes(db: State<'_, DbConnection>) -> Result<Vec<
 }
 
 #[tauri::command]
+pub fn get_distinct_police_areas(db: State<'_, DbConnection>) -> Result<Vec<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT police_area FROM employees WHERE police_area IS NOT NULL AND police_area != '' ORDER BY police_area")
+        .map_err(|e| e.to_string())?;
+    
+    let areas = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    Ok(areas)
+}
+
+#[tauri::command]
 pub fn get_dashboard_stats(db: State<'_, DbConnection>) -> Result<DashboardStats, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     
