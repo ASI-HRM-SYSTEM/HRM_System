@@ -1,7 +1,0 @@
-# Tauri capabilities configuration
-[default]
-permissions = [
-    "core:default",
-    "shell:allow-open",
-    "updater:default"
-]
