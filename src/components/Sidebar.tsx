@@ -114,7 +114,7 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       </nav>
       
       <div className="p-4 border-t border-gray-200">
-        <p className="text-xs text-gray-400 text-center">Version 1.0.0</p>
+        <p className="text-xs text-gray-400 text-center">Version 1.1.0</p>
       </div>
     </aside>
   );
