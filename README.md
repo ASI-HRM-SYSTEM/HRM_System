@@ -2,6 +2,44 @@
 
 A cross-platform desktop HR Management system for garment factories built with Tauri, React, and SQLite.
 
+## 📥 Download
+
+Download the latest version for your operating system:
+
+| Platform | Download |
+|----------|----------|
+| **Windows** | [Download .msi installer](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/HRM-System_1.0.0_x64-setup.msi) |
+| **Linux (Debian/Ubuntu)** | [Download .deb package](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/hrm-system_1.0.0_amd64.deb) |
+| **Linux (AppImage)** | [Download .AppImage](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/hrm-system_1.0.0_amd64.AppImage) |
+
+Or visit the [Releases Page](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases) to see all versions.
+
+### Installation Instructions
+
+#### Windows
+1. Download the `.msi` installer
+2. Double-click the downloaded file
+3. Follow the installation wizard
+4. Launch "HRM System" from the Start Menu
+
+#### Linux (Debian/Ubuntu)
+```bash
+# Download and install the .deb package
+sudo dpkg -i hrm-system_1.0.0_amd64.deb
+
+# If there are dependency issues, run:
+sudo apt-get install -f
+```
+
+#### Linux (AppImage)
+```bash
+# Make the AppImage executable
+chmod +x hrm-system_1.0.0_amd64.AppImage
+
+# Run the application
+./hrm-system_1.0.0_amd64.AppImage
+```
+
 ## Features
 
 - 👥 **Employee Management**: Add, edit, delete, and search employees
@@ -11,7 +49,15 @@ A cross-platform desktop HR Management system for garment factories built with T
 - 🔄 **Auto-Update**: Automatic updates from GitHub Releases
 - 🖥️ **Cross-Platform**: Works on Windows and Linux
 
-## Prerequisites
+## 🛠️ Development Setup
+
+If you want to run or modify the source code:
+
+## 🛠️ Development Setup
+
+If you want to run or modify the source code:
+
+### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18 or later)
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable)
@@ -24,7 +70,7 @@ sudo apt update
 sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 ```
 
-## Development Setup
+### Running from Source
 
 1. **Clone the repository**
    ```bash
