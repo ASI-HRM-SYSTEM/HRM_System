@@ -58,10 +58,10 @@ pub struct User {
     #[serde(skip_serializing)]
     pub password_hash: String,
     pub full_name: String,
-    pub role: String,  // "admin", "hr_manager", "hr_staff", "viewer", "custom"
-    pub department_access: Option<String>,  // null means all departments, or comma-separated list
+    pub role: String, // "admin", "hr_manager", "hr_staff", "viewer", "custom"
+    pub department_access: Option<String>, // null means all departments, or comma-separated list
     pub is_active: bool,
-    pub permissions: UserPermissions,  // Custom permissions stored per user
+    pub permissions: UserPermissions, // Custom permissions stored per user
     pub created_at: Option<String>,
     pub last_login: Option<String>,
 }
@@ -230,12 +230,12 @@ pub struct AuditLog {
     pub id: i32,
     pub user_id: Option<i32>,
     pub username: String,
-    pub action: String,           // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, IMPORT, VIEW
-    pub entity_type: String,      // EMPLOYEE, USER, DATABASE, SYSTEM
-    pub entity_id: Option<String>,// e.g., EPF number or user ID
-    pub old_value: Option<String>,// JSON of old values for UPDATE/DELETE
-    pub new_value: Option<String>,// JSON of new values for CREATE/UPDATE
-    pub details: Option<String>,  // Additional context
+    pub action: String, // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, IMPORT, VIEW
+    pub entity_type: String, // EMPLOYEE, USER, DATABASE, SYSTEM
+    pub entity_id: Option<String>, // e.g., EPF number or user ID
+    pub old_value: Option<String>, // JSON of old values for UPDATE/DELETE
+    pub new_value: Option<String>, // JSON of new values for CREATE/UPDATE
+    pub details: Option<String>, // Additional context
     pub created_at: Option<String>,
 }
 
@@ -254,4 +254,52 @@ pub struct AuditLogFilters {
 pub struct AuditLogResult {
     pub logs: Vec<AuditLog>,
     pub total_count: i32,
+}
+
+// Daily Cader Report Models
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TrainingLineDetail {
+    pub id: Option<i32>,
+    pub report_id: Option<i32>,
+    pub line_name: String,
+    pub actual_cader: i32,
+    pub present_cader: i32,
+    pub absent_count: i32,
+    pub absent_percent: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DailyCaderReport {
+    pub id: Option<i32>,
+    pub report_date: String,
+    pub budget_cader: i32,
+    pub actual_cader: i32,
+    pub present_cader: i32,
+    pub absent_count: i32,
+    pub absent_percent: f64,
+    pub training_line_cader: i32,
+    pub training_line_present: i32,
+    pub training_line_absent_count: i32,
+    pub training_line_absent_percent: f64,
+    pub lto_up_to_date: i32,
+    pub training_line_details: Vec<TrainingLineDetail>,
+    pub created_by: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveCaderReportRequest {
+    pub report_date: String,
+    pub budget_cader: i32,
+    pub actual_cader: i32,
+    pub present_cader: i32,
+    pub absent_count: i32,
+    pub absent_percent: f64,
+    pub training_line_cader: i32,
+    pub training_line_present: i32,
+    pub training_line_absent_count: i32,
+    pub training_line_absent_percent: f64,
+    pub lto_up_to_date: i32,
+    pub training_line_details: Vec<TrainingLineDetail>,
 }

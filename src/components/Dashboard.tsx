@@ -1,6 +1,26 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { DashboardStats } from "../types/employee";
+import {
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from "recharts";
+import type { DashboardStats, DailyCaderReport } from "../types/employee";
+import { CaderService } from "../services/CaderService";
+
+const PIE_COLORS = ["#22c55e", "#ef4444"];
+const BAR_COLORS = ["#22c55e", "#ef4444"];
+
+const RADIAN = Math.PI / 180;
+const PieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  if (percent < 0.05) return null;
+  const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+  return (
+    <text x={cx + r * Math.cos(-midAngle * RADIAN)} y={cy + r * Math.sin(-midAngle * RADIAN)}
+      fill="white" textAnchor="middle" dominantBaseline="central" fontSize={13} fontWeight={700}>
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -14,9 +34,14 @@ function Dashboard() {
     recent_resignations: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [todayCaderReport, setTodayCaderReport] = useState<DailyCaderReport | null>(null);
+  const [caderLoading, setCaderLoading] = useState(true);
+  const [caderHistory, setCaderHistory] = useState<DailyCaderReport[]>([]);
 
   useEffect(() => {
     loadStats();
+    loadTodayCader();
+    CaderService.getHistory(14).then(setCaderHistory);
   }, []);
 
   const loadStats = async () => {
@@ -30,6 +55,13 @@ function Dashboard() {
     }
   };
 
+  const loadTodayCader = async () => {
+    setCaderLoading(true);
+    const report = await CaderService.getByDate(CaderService.todayString());
+    setTodayCaderReport(report);
+    setCaderLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -38,14 +70,14 @@ function Dashboard() {
     );
   }
 
-  const retentionRate = stats.total_employees > 0 
-    ? Math.round((stats.active_employees / stats.total_employees) * 100) 
+  const retentionRate = stats.total_employees > 0
+    ? Math.round((stats.active_employees / stats.total_employees) * 100)
     : 0;
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-      
+
       {/* Main Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="card">
@@ -230,6 +262,90 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Today's Cader Report */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h2 className="text-lg font-semibold text-gray-800">Today's Cader Report</h2>
+            <span className="text-xs text-gray-400">{CaderService.todayString()}</span>
+          </div>
+        </div>
+
+        {caderLoading ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
+          </div>
+        ) : !todayCaderReport ? (
+          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+            <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-gray-500 text-sm font-medium">No cader report entered for today</p>
+            <p className="text-gray-400 text-xs mt-1">Go to <strong>Cader Report</strong> in the sidebar to add it.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Main Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                { label: "Budget", value: todayCaderReport.budget_cader, color: "text-gray-700", bg: "bg-gray-50" },
+                { label: "Actual", value: todayCaderReport.actual_cader, color: "text-blue-700", bg: "bg-blue-50" },
+                { label: "Present", value: todayCaderReport.present_cader, color: "text-green-700", bg: "bg-green-50" },
+                { label: "Absent", value: todayCaderReport.absent_count, color: "text-red-700", bg: "bg-red-50" },
+                { label: "Absent %", value: `${todayCaderReport.absent_percent}%`, color: "text-orange-700", bg: "bg-orange-50" },
+                { label: "LTO", value: todayCaderReport.lto_up_to_date, color: "text-purple-700", bg: "bg-purple-50" },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Training Line Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="bg-amber-50 rounded-xl p-3 text-center">
+                <p className="text-xl font-bold text-amber-700">{todayCaderReport.training_line_cader}</p>
+                <p className="text-xs text-gray-500">TL Cader</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-3 text-center">
+                <p className="text-xl font-bold text-green-700">{todayCaderReport.training_line_present}</p>
+                <p className="text-xs text-gray-500">TL Present</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-3 text-center">
+                <p className="text-xl font-bold text-red-700">{todayCaderReport.training_line_absent_count}</p>
+                <p className="text-xs text-gray-500">TL Absent</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-3 text-center">
+                <p className="text-xl font-bold text-red-700">{todayCaderReport.training_line_absent_percent}%</p>
+                <p className="text-xs text-gray-500">TL Absent %</p>
+              </div>
+            </div>
+
+            {/* Training Line Breakdown */}
+            {todayCaderReport.training_line_details.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Training Line Breakdown</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {todayCaderReport.training_line_details.map((line) => (
+                    <div key={line.line_name} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                      <span className="font-semibold text-gray-700">{line.line_name}</span>
+                      <span className="text-green-700">{line.present_cader}/{line.actual_cader}</span>
+                      <span className="text-red-600 text-xs">{line.absent_percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-gray-400 text-right">Last updated by {todayCaderReport.created_by || "—"} · {todayCaderReport.updated_at?.slice(0, 16) || ""}</p>
+          </div>
+        )}
+      </div>
+
       {/* Quick Summary */}
       <div className="card bg-gradient-to-r from-primary-50 to-blue-50">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Summary</h2>
@@ -248,14 +364,95 @@ function Dashboard() {
           </div>
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <p className="text-2xl font-bold text-purple-600">
-              {stats.active_employees > 0 
-                ? Math.round(stats.active_employees / (stats.departments.length || 1)) 
+              {stats.active_employees > 0
+                ? Math.round(stats.active_employees / (stats.departments.length || 1))
                 : 0}
             </p>
             <p className="text-sm text-gray-500">Avg per Dept</p>
           </div>
         </div>
       </div>
+
+      {/* Cader Charts — only shown when today's report exists */}
+      {todayCaderReport && (
+        <>
+          {/* Pie charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="card">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Main Cader — Attendance Split</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Present", value: todayCaderReport.present_cader },
+                      { name: "Absent", value: todayCaderReport.absent_count },
+                    ]}
+                    cx="50%" cy="50%" outerRadius={90}
+                    dataKey="value" labelLine={false} label={PieLabel}>
+                    <Cell fill={PIE_COLORS[0]} />
+                    <Cell fill={PIE_COLORS[1]} />
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`${v} employees`, ""]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-6 text-sm mt-1">
+                <span className="text-green-600 font-semibold">✅ Present: {todayCaderReport.present_cader}</span>
+                <span className="text-red-600 font-semibold">❌ Absent: {todayCaderReport.absent_count}</span>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Training Line — Attendance Split</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "TL Present", value: todayCaderReport.training_line_present },
+                      { name: "TL Absent", value: todayCaderReport.training_line_absent_count },
+                    ]}
+                    cx="50%" cy="50%" outerRadius={90}
+                    dataKey="value" labelLine={false} label={PieLabel}>
+                    <Cell fill={PIE_COLORS[0]} />
+                    <Cell fill={PIE_COLORS[1]} />
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`${v} employees`, ""]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-6 text-sm mt-1">
+                <span className="text-green-600 font-semibold">✅ TL Present: {todayCaderReport.training_line_present}</span>
+                <span className="text-red-600 font-semibold">❌ TL Absent: {todayCaderReport.training_line_absent_count}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 14-day trend */}
+          {caderHistory.length >= 2 && (
+            <div className="card">
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">14-Day Attendance Trend</h3>
+              <p className="text-xs text-gray-400 mb-4">Present vs Absent over the last 14 reports</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={[...caderHistory].reverse().map(r => ({
+                    name: r.report_date.slice(5),
+                    Present: r.present_cader,
+                    Absent: r.absent_count,
+                  }))}
+                  margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Present" fill={BAR_COLORS[0]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Absent" fill={BAR_COLORS[1]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -20,22 +20,22 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
             std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
         }
     };
-    
+
     if let Err(e) = std::fs::create_dir_all(&app_dir) {
         eprintln!("Failed to create app data directory: {:?}", e);
     }
-    
+
     // Create employee_images folder
     let images_dir = app_dir.join("employee_images");
     if let Err(e) = std::fs::create_dir_all(&images_dir) {
         eprintln!("Failed to create employee images directory: {:?}", e);
     }
-    
+
     let db_path = app_dir.join("hrm_system.db");
     eprintln!("Database path: {:?}", db_path);
-    
+
     let conn = Connection::open(&db_path)?;
-    
+
     // Create employees table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS employees (
@@ -61,7 +61,7 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
         )",
         [],
     )?;
-    
+
     // Create users table with permissions columns
     conn.execute(
         "CREATE TABLE IF NOT EXISTS users (
@@ -87,14 +87,10 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
         )",
         [],
     )?;
-    
+
     // Create default admin user if no users exist
-    let user_count: i32 = conn.query_row(
-        "SELECT COUNT(*) FROM users",
-        [],
-        |row| row.get(0),
-    )?;
-    
+    let user_count: i32 = conn.query_row("SELECT COUNT(*) FROM users", [], |row| row.get(0))?;
+
     if user_count == 0 {
         // Default password is "admin123" - should be changed on first login
         let default_password_hash = hash_password("admin123");
@@ -105,13 +101,13 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
         )?;
         eprintln!("Created default admin user (username: admin, password: admin123)");
     }
-    
+
     // Add new columns if they don't exist (for existing databases)
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN cader TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN designation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN allocation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN image_path TEXT", []);
-    
+
     // Create audit_logs table for tracking all database actions
     conn.execute(
         "CREATE TABLE IF NOT EXISTS audit_logs (
@@ -129,29 +125,99 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
         )",
         [],
     )?;
-    
+
+    // Create daily_cader_reports table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS daily_cader_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_date TEXT UNIQUE NOT NULL,
+            budget_cader INTEGER DEFAULT 0,
+            actual_cader INTEGER DEFAULT 0,
+            present_cader INTEGER DEFAULT 0,
+            absent_count INTEGER DEFAULT 0,
+            absent_percent REAL DEFAULT 0,
+            training_line_cader INTEGER DEFAULT 0,
+            training_line_present INTEGER DEFAULT 0,
+            training_line_absent_count INTEGER DEFAULT 0,
+            training_line_absent_percent REAL DEFAULT 0,
+            lto_up_to_date INTEGER DEFAULT 0,
+            created_by TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
+
+    // Create training_line_details table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS training_line_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_id INTEGER NOT NULL,
+            line_name TEXT NOT NULL,
+            actual_cader INTEGER DEFAULT 0,
+            present_cader INTEGER DEFAULT 0,
+            absent_count INTEGER DEFAULT 0,
+            absent_percent REAL DEFAULT 0,
+            FOREIGN KEY (report_id) REFERENCES daily_cader_reports(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
     // Add permission columns to users table if they don't exist (migration)
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_employees INTEGER DEFAULT 1", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_add_employees INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_edit_employees INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_delete_employees INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_manage_users INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_all_departments INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_export_data INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_reports INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_manage_settings INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_backup_database INTEGER DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0", []);
-    
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_view_employees INTEGER DEFAULT 1",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_add_employees INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_edit_employees INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_delete_employees INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_manage_users INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_view_all_departments INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_export_data INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_view_reports INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_manage_settings INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_backup_database INTEGER DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0",
+        [],
+    );
+
     // Update existing admin users to have all permissions
     let _ = conn.execute(
         "UPDATE users SET can_view_employees=1, can_add_employees=1, can_edit_employees=1, can_delete_employees=1, can_manage_users=1, can_view_all_departments=1, can_export_data=1, can_view_reports=1, can_manage_settings=1, can_backup_database=1, can_view_audit_logs=1 WHERE role='admin'",
         [],
     );
-    
+
     // Migrate job_role to designation if job_role exists
     let _ = conn.execute("UPDATE employees SET designation = job_role WHERE designation IS NULL AND job_role IS NOT NULL", []);
-    
+
     Ok((conn, app_dir))
 }
 

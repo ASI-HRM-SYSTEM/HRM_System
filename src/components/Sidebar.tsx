@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../types/auth";
 
-export type PageType = "dashboard" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings" | "backup" | "audit";
+export type PageType = "dashboard" | "cader" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings" | "backup" | "audit";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -18,6 +18,15 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+      ),
+    },
+    {
+      id: "cader",
+      label: "Cader Report",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
     },
@@ -123,9 +132,9 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
   return (
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
       <div className="p-6 flex items-center gap-3">
-        <img 
-          src="/logo.jpg" 
-          alt="New Lanka Clothing" 
+        <img
+          src="/logo.jpg"
+          alt="New Lanka Clothing"
           className="w-12 h-12 object-contain"
         />
         <div>
@@ -133,7 +142,7 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
           <p className="text-sm text-gray-500">New Lanka Clothing</p>
         </div>
       </div>
-      
+
       <nav className="mt-2 flex-1">
         {menuItems
           .filter((item) => {
@@ -144,21 +153,20 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
             return true;
           })
           .map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setCurrentPage(item.id)}
-            className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-colors ${
-              currentPage === item.id
-                ? "bg-primary-50 text-primary-700 border-r-4 border-primary-600"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            {item.icon}
-            <span className="font-medium">{item.label}</span>
-          </button>
-        ))}
+            <button
+              key={item.id}
+              onClick={() => setCurrentPage(item.id)}
+              className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-colors ${currentPage === item.id
+                  ? "bg-primary-50 text-primary-700 border-r-4 border-primary-600"
+                  : "text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              {item.icon}
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
       </nav>
-      
+
       {/* User Info Section */}
       {user && (
         <div className="p-4 border-t border-gray-200 bg-gray-50">
@@ -186,7 +194,7 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
           </button>
         </div>
       )}
-      
+
       <div className="p-4 border-t border-gray-200">
         <p className="text-xs text-gray-400 text-center">Version 1.1.0</p>
       </div>

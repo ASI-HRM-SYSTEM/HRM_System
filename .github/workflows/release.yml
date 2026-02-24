@@ -125,27 +125,46 @@ jobs:
           # Find the signature files and bundles
           cd release-assets
           
-          # Get Windows signature (prefer NSIS over MSI)
+          # Debug: List all files
+          echo "Available files:"
+          ls -la
+          
+          # Get Windows signature (prefer NSIS zip, then MSI zip, then exe)
           WIN_SIG=""
           WIN_URL=""
+          # Check for NSIS zip bundle (updater format)
           if [ -f "HRM.System_${VERSION}_x64-setup.nsis.zip.sig" ]; then
             WIN_SIG=$(cat "HRM.System_${VERSION}_x64-setup.nsis.zip.sig")
             WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64-setup.nsis.zip"
-          elif [ -f "HRM System_${VERSION}_x64-setup.nsis.zip.sig" ]; then
-            WIN_SIG=$(cat "HRM System_${VERSION}_x64-setup.nsis.zip.sig")
-            WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM%20System_${VERSION}_x64-setup.nsis.zip"
+          # Check for MSI zip bundle (updater format)
           elif [ -f "HRM.System_${VERSION}_x64_en-US.msi.zip.sig" ]; then
             WIN_SIG=$(cat "HRM.System_${VERSION}_x64_en-US.msi.zip.sig")
             WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64_en-US.msi.zip"
+          # Fallback: Use exe signature (not ideal for updater but indicates signing works)
+          elif [ -f "HRM.System_${VERSION}_x64-setup.exe.sig" ]; then
+            echo "Warning: Only .exe.sig found, updater needs .nsis.zip or .msi.zip bundles"
+            WIN_SIG=$(cat "HRM.System_${VERSION}_x64-setup.exe.sig")
+            WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64-setup.exe"
           fi
           
-          # Get Linux signature
+          # Get Linux signature (prefer tar.gz bundle, then raw AppImage)
           LINUX_SIG=""
           LINUX_URL=""
-          if [ -f "hrm-system_${VERSION}_amd64.AppImage.tar.gz.sig" ]; then
-            LINUX_SIG=$(cat "hrm-system_${VERSION}_amd64.AppImage.tar.gz.sig")
-            LINUX_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/hrm-system_${VERSION}_amd64.AppImage.tar.gz"
+          # Check for AppImage tar.gz bundle (updater format)
+          if [ -f "HRM.System_${VERSION}_amd64.AppImage.tar.gz.sig" ]; then
+            LINUX_SIG=$(cat "HRM.System_${VERSION}_amd64.AppImage.tar.gz.sig")
+            LINUX_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_amd64.AppImage.tar.gz"
+          # Fallback: Use raw AppImage signature
+          elif [ -f "HRM.System_${VERSION}_amd64.AppImage.sig" ]; then
+            echo "Warning: Only .AppImage.sig found, updater needs .AppImage.tar.gz bundles"
+            LINUX_SIG=$(cat "HRM.System_${VERSION}_amd64.AppImage.sig")
+            LINUX_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_amd64.AppImage"
           fi
+          
+          echo "Windows signature: ${WIN_SIG:0:50}..."
+          echo "Windows URL: $WIN_URL"
+          echo "Linux signature: ${LINUX_SIG:0:50}..."
+          echo "Linux URL: $LINUX_URL"
           
           cd ..
           

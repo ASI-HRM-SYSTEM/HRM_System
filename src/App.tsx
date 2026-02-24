@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { FirebaseAuthProvider, useFirebaseAuth } from "./context/FirebaseAuthContext";
 import EmployeeManagement from "./components/EmployeeManagement";
 import Dashboard from "./components/Dashboard";
 import Sidebar, { PageType } from "./components/Sidebar";
@@ -11,6 +12,8 @@ import Login from "./components/Login";
 import UserManagement from "./components/UserManagement";
 import DatabaseBackup from "./components/DatabaseBackup";
 import AuditLogViewer from "./components/AuditLogViewer";
+import DailyCaderReport from "./components/DailyCaderReport";
+import FirebaseLogin from "./components/FirebaseLogin";
 
 // Developer info - Update these with your details
 const DEVELOPER_NAME = "Asitha Kanchana";
@@ -43,8 +46,8 @@ function AppContent() {
           <h2 className="text-xl font-bold text-gray-800 mb-2">Database Error</h2>
           <p className="text-gray-600 mb-4">Failed to initialize the database:</p>
           <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{initError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="mt-4 btn-primary"
           >
             Retry
@@ -76,36 +79,39 @@ function AppContent() {
     switch (currentPage) {
       case "dashboard":
         return <Dashboard />;
+      case "cader":
+        return <DailyCaderReport />;
       case "employees":
         return <EmployeeManagement />;
+
       case "jobdesk":
         return (
-          <WorkInProgress 
-            title="Job Desk" 
+          <WorkInProgress
+            title="Job Desk"
             description="Job designation and department management will be available here."
             icon="💼"
           />
         );
       case "leave":
         return (
-          <WorkInProgress 
-            title="Leave Management" 
+          <WorkInProgress
+            title="Leave Management"
             description="Employee leave requests, approvals, and leave balance tracking will be available here."
             icon="🏖️"
           />
         );
       case "attendance":
         return (
-          <WorkInProgress 
-            title="Attendance" 
+          <WorkInProgress
+            title="Attendance"
             description="Fingerprint attendance import from Excel and daily attendance tracking will be available here."
             icon="📋"
           />
         );
       case "payroll":
         return (
-          <WorkInProgress 
-            title="Payroll" 
+          <WorkInProgress
+            title="Payroll"
             description="Salary calculation, payslips, and payroll reports will be available here."
             icon="💰"
           />
@@ -116,16 +122,16 @@ function AppContent() {
           return <UserManagement />;
         }
         return (
-          <WorkInProgress 
-            title="Admin Panel" 
+          <WorkInProgress
+            title="Admin Panel"
             description="You don't have permission to access user management."
             icon="🔒"
           />
         );
       case "settings":
         return (
-          <WorkInProgress 
-            title="Settings" 
+          <WorkInProgress
+            title="Settings"
             description="Application settings, backup/restore, and configuration options will be available here."
             icon="⚙️"
           />
@@ -138,8 +144,8 @@ function AppContent() {
           return <AuditLogViewer />;
         }
         return (
-          <WorkInProgress 
-            title="Activity Logs" 
+          <WorkInProgress
+            title="Activity Logs"
             description="You don't have permission to view activity logs."
             icon="🔒"
           />
@@ -165,10 +171,31 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <FirebaseAuthProvider>
+      <FirebaseGate>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </FirebaseGate>
+    </FirebaseAuthProvider>
   );
+}
+
+/**
+ * FirebaseGate — shows FirebaseLogin until the user is authenticated and allowlisted.
+ * If Firebase is unconfigured (.env not set), renders children directly.
+ */
+function FirebaseGate({ children }: { children: React.ReactNode }) {
+  const { status } = useFirebaseAuth();
+
+  // No .env → skip Firebase gate entirely (local-only mode)
+  if (status === "unconfigured") return <>{children}</>;
+
+  // Authenticated and allowed → show the HRM app
+  if (status === "allowed") return <>{children}</>;
+
+  // All other states → show the Firebase login/access-denied screen
+  return <FirebaseLogin />;
 }
 
 export default App;

@@ -74,3 +74,49 @@ export interface AuditLogSummary {
   action_breakdown: { action: string; count: number }[];
   active_users: { username: string; count: number }[];
 }
+
+// ─── Daily Cader Report Types ────────────────────────────────────────────────
+
+export interface TrainingLineDetail {
+  id?: number;
+  report_id?: number;
+  line_name: string;
+  actual_cader: number;
+  present_cader: number;
+  absent_count: number;
+  absent_percent: number;
+}
+
+export interface DailyCaderReport {
+  id?: number;
+  report_date: string;
+  budget_cader: number;
+  actual_cader: number;
+  present_cader: number;
+  absent_count: number;
+  absent_percent: number;
+  training_line_cader: number;
+  training_line_present: number;
+  training_line_absent_count: number;
+  training_line_absent_percent: number;
+  lto_up_to_date: number;
+  training_line_details: TrainingLineDetail[];
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SaveCaderReportRequest {
+  report_date: string;
+  budget_cader: number;
+  actual_cader: number;
+  present_cader: number;
+  absent_count: number;
+  absent_percent: number;
+  training_line_cader: number;
+  training_line_present: number;
+  training_line_absent_count: number;
+  training_line_absent_percent: number;
+  lto_up_to_date: number;
+  training_line_details: TrainingLineDetail[];
+}
