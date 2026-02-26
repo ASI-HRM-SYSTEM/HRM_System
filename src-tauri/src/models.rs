@@ -20,8 +20,31 @@ pub struct Employee {
     pub allocation: Option<String>,
     pub department: Option<String>,
     pub image_path: Option<String>,
+    pub nic: Option<String>,
+    pub gender: Option<String>,
     #[serde(skip_deserializing)]
     pub created_at: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Bank {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EmployeeBankAccount {
+    pub id: Option<i32>,
+    pub epf_number: String,
+    pub bank_id: i32,
+    pub bank_name: String,
+    pub account_number: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveBankAccountRequest {
+    pub bank_id: i32,
+    pub account_number: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

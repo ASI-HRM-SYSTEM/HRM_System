@@ -17,7 +17,22 @@ export interface Employee {
   allocation: string | null;
   department: string | null;
   image_path: string | null;
+  nic: string | null;
+  gender: string | null;
   created_at?: string;
+}
+
+export interface Bank {
+  id: number;
+  name: string;
+}
+
+export interface EmployeeBankAccount {
+  id?: number;
+  epf_number: string;
+  bank_id: number;
+  bank_name: string;
+  account_number: string;
 }
 
 export interface EmployeeFilters {

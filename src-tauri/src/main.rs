@@ -66,6 +66,11 @@ fn main() {
             commands::get_daily_cader_report,
             commands::get_cader_report_history,
             commands::delete_daily_cader_report,
+            // Bank commands
+            commands::get_banks,
+            commands::create_bank,
+            commands::get_employee_bank_accounts,
+            commands::save_employee_bank_accounts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -57,6 +57,8 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
             allocation TEXT,
             department TEXT,
             image_path TEXT,
+            nic TEXT,
+            gender TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )",
         [],
@@ -107,6 +109,62 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN designation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN allocation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN image_path TEXT", []);
+    let _ = conn.execute("ALTER TABLE employees ADD COLUMN nic TEXT", []);
+    let _ = conn.execute("ALTER TABLE employees ADD COLUMN gender TEXT", []);
+
+    // Create banks table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
+
+    // Seed common Sri Lankan banks if none exist
+    let bank_count: i32 = conn
+        .query_row("SELECT COUNT(*) FROM banks", [], |row| row.get(0))
+        .unwrap_or(0);
+    if bank_count == 0 {
+        let banks = [
+            "Bank of Ceylon (BOC)",
+            "People's Bank",
+            "Commercial Bank of Ceylon",
+            "Hatton National Bank (HNB)",
+            "Sampath Bank",
+            "Seylan Bank",
+            "National Development Bank (NDB)",
+            "Nations Trust Bank (NTB)",
+            "DFCC Bank",
+            "Pan Asia Bank",
+            "Union Bank",
+            "Amana Bank",
+            "Cargills Bank",
+            "MCB Bank",
+            "State Mortgage & Investment Bank",
+        ];
+        for bank in &banks {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO banks (name) VALUES (?1)",
+                [bank],
+            );
+        }
+    }
+
+    // Create employee_bank_accounts table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS employee_bank_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            epf_number TEXT NOT NULL,
+            bank_id INTEGER NOT NULL,
+            account_number TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (epf_number) REFERENCES employees(epf_number) ON DELETE CASCADE,
+            FOREIGN KEY (bank_id) REFERENCES banks(id) ON DELETE RESTRICT
+        )",
+        [],
+    )?;
 
     // Create audit_logs table for tracking all database actions
     conn.execute(

@@ -4,7 +4,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-shell";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
-import type { Employee } from "../types/employee";
+import type { Employee, EmployeeBankAccount } from "../types/employee";
 
 interface EmployeeProfileProps {
   epfNumber: string;
@@ -20,6 +20,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [bankAccounts, setBankAccounts] = useState<EmployeeBankAccount[]>([]);
   const profileRef = useRef<HTMLDivElement>(null);
   const qrCodeRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +32,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
     try {
       const data = await invoke<Employee>("get_employee_by_epf", { epfNumber });
       setEmployee(data);
-      
+
       if (data.image_path) {
         try {
           const image = await invoke<string>("get_employee_image", { imagePath: data.image_path });
@@ -39,6 +40,14 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         } catch {
           setImageUrl(null);
         }
+      }
+
+      // Load bank accounts
+      try {
+        const accounts = await invoke<EmployeeBankAccount[]>("get_employee_bank_accounts", { epfNumber });
+        setBankAccounts(accounts);
+      } catch {
+        setBankAccounts([]);
       }
     } catch (err) {
       setError(err as string);
@@ -78,7 +87,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
     const today = new Date();
     const years = today.getFullYear() - join.getFullYear();
     const months = today.getMonth() - join.getMonth();
-    
+
     if (months < 0) {
       return `${years - 1} years, ${12 + months} months`;
     }
@@ -201,10 +210,10 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
       </head>
       <body>
         <div class="header">
-          ${imageUrl 
-            ? `<img src="${imageUrl}" class="photo" alt="Employee Photo">`
-            : `<div class="photo-placeholder">👤</div>`
-          }
+          ${imageUrl
+        ? `<img src="${imageUrl}" class="photo" alt="Employee Photo">`
+        : `<div class="photo-placeholder">👤</div>`
+      }
           <div class="title-section">
             <h1>${employee.full_name}</h1>
             <h2>${employee.name_with_initials}</h2>
@@ -312,7 +321,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         defaultPath: `Employee_${employee.epf_number}_${new Date().toISOString().split('T')[0]}.html`,
         filters: [{ name: "HTML Files", extensions: ["html"] }],
       });
-      
+
       if (filePath) {
         await writeTextFile(filePath, htmlContent);
         // Open the file in browser for printing
@@ -338,7 +347,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
 
   const handleExportQRCode = async () => {
     if (!employee) return;
-    
+
     try {
       // Find the canvas element within the QR code ref
       const canvas = qrCodeRef.current?.querySelector('canvas');
@@ -349,7 +358,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
       }
 
       const dataUrl = canvas.toDataURL('image/png');
-      
+
       const filePath = await save({
         defaultPath: `QR_${employee.epf_number}_${new Date().toISOString().slice(0, 10)}.png`,
         filters: [{ name: "PNG Image", extensions: ["png"] }],
@@ -363,7 +372,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        
+
         await invoke("save_binary_file", { filePath, data: Array.from(bytes) });
         alert("QR Code exported successfully!");
       }
@@ -417,7 +426,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
                 </div>
               )}
             </div>
-            
+
             {/* Title Info */}
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{employee.full_name}</h1>
@@ -426,11 +435,10 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
                 <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
                   EPF: {employee.epf_number}
                 </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  employee.working_status === 'active' 
-                    ? 'bg-green-500 text-white' 
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${employee.working_status === 'active'
+                    ? 'bg-green-500 text-white'
                     : 'bg-red-500 text-white'
-                }`}>
+                  }`}>
                   {employee.working_status === 'active' ? 'Active' : 'Resigned'}
                 </span>
               </div>
@@ -482,11 +490,13 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InfoItem label="Date of Birth" value={formatDate(employee.dob)} />
               <InfoItem label="Age" value={`${calculateAge(employee.dob)} years`} />
-              <InfoItem 
-                label="Marital Status" 
-                value={employee.marital_status ? employee.marital_status.charAt(0).toUpperCase() + employee.marital_status.slice(1) : null} 
+              <InfoItem
+                label="Marital Status"
+                value={employee.marital_status ? employee.marital_status.charAt(0).toUpperCase() + employee.marital_status.slice(1) : null}
               />
               <InfoItem label="Police Area" value={employee.police_area} />
+              <InfoItem label="NIC Number" value={employee.nic} />
+              <InfoItem label="Gender" value={employee.gender} />
             </div>
           </div>
 
@@ -507,6 +517,31 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
               <InfoItem label="Address" value={employee.address} fullWidth />
             </div>
           </div>
+
+          {/* Bank Accounts */}
+          {bankAccounts.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Bank Accounts
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {bankAccounts.map((account, index) => (
+                  <div key={account.id ?? index} className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">{account.bank_name}</p>
+                      <p className="text-sm font-medium text-gray-800 font-mono">{account.account_number}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* QR Code Section */}
           {showQRCode && (
@@ -558,11 +593,10 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
             {/* QR Code Toggle */}
             <button
               onClick={() => setShowQRCode(!showQRCode)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
-                showQRCode 
-                  ? 'border-primary-500 bg-primary-50 text-primary-700' 
+              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${showQRCode
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
                   : 'border-gray-300 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
