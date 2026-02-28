@@ -77,8 +77,13 @@ function FirebaseLogin() {
 
                     {/* Error message */}
                     {error && (
-                        <div className="mb-4 p-3 bg-red-500/20 border border-red-400/30 rounded-xl text-red-300 text-sm text-center">
-                            {error}
+                        <div className="mb-4 p-4 bg-red-500/20 border border-red-400/30 rounded-xl">
+                            <p className="text-red-300 text-sm font-medium mb-2">{error}</p>
+                            {error.toLowerCase().includes("popup") && (
+                                <p className="text-red-200 text-xs opacity-80">
+                                    💡 <strong>Tip:</strong> If using a browser, ensure popups are enabled. If using the desktop app, try clicking the button again.
+                                </p>
+                            )}
                         </div>
                     )}
 

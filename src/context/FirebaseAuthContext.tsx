@@ -6,8 +6,8 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
-    GoogleAuthProvider, signInWithPopup, signOut as fbSignOut,
-    onAuthStateChanged, type User,
+    GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+    signOut as fbSignOut, onAuthStateChanged, type User,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, COMPANY_ID, isFirebaseConfigured } from "../config/firebase";
@@ -59,16 +59,37 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!isFirebaseConfigured()) return;
 
+        // Check redirect result first (happens after OAuth redirect)
+        (async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result?.user) {
+                    console.log("[FirebaseAuth] Processing redirect result for:", result.user.email);
+                    const allowed = await checkAllowlist(result.user);
+                    setStatus(allowed ? "allowed" : "denied");
+                    if (!allowed) {
+                        setError(`${result.user.email} is not authorized. Contact your administrator.`);
+                    }
+                }
+            } catch (err: any) {
+                console.error("[FirebaseAuth] Redirect result error:", err);
+            }
+        })();
+
+        // Set up listener for auth state changes (handles both popup and redirect)
         const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
             setFirebaseUser(user);
             if (!user) {
                 setStatus("unauthenticated");
+                setError(null);
                 return;
             }
             setStatus("checking");
             const allowed = await checkAllowlist(user);
             setStatus(allowed ? "allowed" : "denied");
-            if (!allowed) setError(`${user.email} is not authorized. Contact your administrator.`);
+            if (!allowed) {
+                setError(`${user.email} is not authorized. Contact your administrator.`);
+            }
         });
         return unsubscribe;
     }, []);
@@ -77,13 +98,45 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            // onAuthStateChanged above handles status update
-        } catch (err: any) {
-            if (err.code !== "auth/popup-closed-by-user") {
-                setError(`Sign-in failed: ${err.message}`);
+            
+            // Try popup first
+            try {
+                await signInWithPopup(auth, provider);
+                // onAuthStateChanged above handles status update
+            } catch (popupErr: any) {
+                // If popup is blocked, fall back to redirect-based sign-in
+                if (
+                    popupErr.code === "auth/popup-blocked" ||
+                    popupErr.code === "auth/operation-not-supported-in-this-environment"
+                ) {
+                    console.log("[FirebaseAuth] Popup blocked - using redirect instead");
+                    await signInWithRedirect(auth, provider);
+                    // User will be redirected to Google, then back to app with result
+                } else if (popupErr.code === "auth/popup-closed-by-user") {
+                    // User closed the popup, no error to show
+                    return;
+                } else {
+                    throw popupErr;
+                }
             }
+        } catch (err: any) {
+            const errorMsg = getErrorMessage(err);
+            setError(`Sign-in failed: ${errorMsg}`);
         }
+    };
+
+    const getErrorMessage = (err: any): string => {
+        if (!err.code) return err.message || "Unknown error";
+        
+        const errorMap: Record<string, string> = {
+            "auth/popup-blocked": "Popup blocked. Please allow popups or try again.",
+            "auth/popup-closed-by-user": "Sign-in popup was closed",
+            "auth/operation-not-supported-in-this-environment": "Sign-in not supported in this context",
+            "auth/network-request-failed": "Network error. Please check your connection.",
+            "auth/internal-error": "Internal authentication error. Please try again.",
+        };
+        
+        return errorMap[err.code] || err.message || "Unknown error";
     };
 
     const signOut = async () => {

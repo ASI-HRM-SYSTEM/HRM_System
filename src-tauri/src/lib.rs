@@ -84,6 +84,7 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
             can_view_reports INTEGER DEFAULT 0,
             can_manage_settings INTEGER DEFAULT 0,
             can_backup_database INTEGER DEFAULT 0,
+            can_view_audit_logs INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             last_login TEXT
         )",
@@ -111,6 +112,9 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN image_path TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN nic TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN gender TEXT", []);
+
+    // Add missing permission columns to users table if they don't exist (for existing databases)
+    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0", []);
 
     // Create banks table
     conn.execute(
