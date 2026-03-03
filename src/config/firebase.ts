@@ -20,6 +20,9 @@ const firebaseConfig = {
 // Company ID used as Firestore root path
 export const COMPANY_ID: string = import.meta.env.VITE_FB_COMPANY_ID || "newlanka";
 
+// Firebase API key — also used by the local-server OAuth REST calls for Tauri
+export const FIREBASE_API_KEY: string = import.meta.env.VITE_FB_API_KEY || "";
+
 // Check whether Firebase is configured
 export const isFirebaseConfigured = (): boolean =>
     Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);

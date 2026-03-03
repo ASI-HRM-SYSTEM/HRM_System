@@ -10,13 +10,14 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "HRM System - New Lanka Clothing",
         "width": 1280,
         "height": 800,
         "resizable": true,
-        "fullscreen": true,
+        "fullscreen": false,
         "center": true,
         "minWidth": 1024,
         "minHeight": 600,

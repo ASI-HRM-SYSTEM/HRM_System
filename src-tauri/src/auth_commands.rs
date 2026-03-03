@@ -1,6 +1,103 @@
 use crate::models::{CreateUserRequest, LoginRequest, UpdateUserRequest, UserInfo, UserPermissions, UserSession};
 use crate::{hash_password, verify_password, CurrentUser, DbConnection};
-use tauri::State;
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::time::{Duration, Instant};
+use tauri::{Emitter, State};
+
+const GOOGLE_OAUTH_CALLBACK_PORT: u16 = 43189;
+
+/// Starts a temporary local HTTP server on a fixed localhost port to capture the OAuth callback.
+/// Returns the port so the frontend can build the redirect_uri as http://localhost:PORT.
+/// After receiving the OAuth callback request, emits "oauth-callback" with the full
+/// URL (e.g. "http://localhost:PORT/?code=...") to the frontend and closes.
+#[tauri::command]
+pub async fn start_google_auth(app: tauri::AppHandle) -> Result<u16, String> {
+    // Google OAuth requires an exact redirect URI match.
+    // Use a fixed localhost callback port (must be registered in OAuth client settings).
+    let listener = TcpListener::bind(("localhost", GOOGLE_OAUTH_CALLBACK_PORT)).map_err(|e| {
+        format!(
+            "Failed to bind OAuth callback port {} on localhost: {}",
+            GOOGLE_OAUTH_CALLBACK_PORT, e
+        )
+    })?;
+    let port = GOOGLE_OAUTH_CALLBACK_PORT;
+
+    // Spawn a background thread to wait for the OAuth callback.
+    std::thread::spawn(move || {
+        listener.set_nonblocking(true).ok();
+
+        // Set a 5-minute deadline: if no callback arrives, the thread exits cleanly.
+        let deadline = Instant::now() + Duration::from_secs(300);
+
+        loop {
+            if Instant::now() >= deadline {
+                let _ = app.emit("oauth-callback-error", "Sign-in timed out. Please try again.");
+                break;
+            }
+
+            // Accept the next browser connection.
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    // Give the browser up to 2s to send the request.
+                    stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
+
+                    let mut buffer = [0u8; 8192];
+                    let bytes_read = stream.read(&mut buffer).unwrap_or(0);
+                    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+                    // HTTP request line: "GET /path HTTP/1.1"
+                    let path = request
+                        .lines()
+                        .next()
+                        .and_then(|line| line.split_whitespace().nth(1))
+                        .unwrap_or("/");
+
+                    // Skip favicon.ico and any other non-callback requests.
+                    // The real OAuth callback always has query parameters (code=, state=, etc.)
+                    if path == "/favicon.ico" || path == "/" || !path.contains('?') {
+                        // Respond with a minimal 204 and keep waiting.
+                        let _ = stream.write_all(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
+                        continue;
+                    }
+
+                    let callback_url = format!("http://localhost:{}{}", port, path);
+
+                    // Respond with a styled success page.
+                    let html = "<html><head><title>Sign In Successful</title>\
+                        <style>body{font-family:sans-serif;display:flex;justify-content:center;\
+                        align-items:center;height:100vh;margin:0;background:#0f172a;color:#e2e8f0;}\
+                        .card{text-align:center;padding:2rem;border-radius:1rem;\
+                        background:#1e293b;border:1px solid #334155;}\
+                        h2{color:#4ade80;margin-bottom:0.5rem;}p{color:#94a3b8;}</style></head>\
+                        <body><div class=\"card\"><h2>&#10003; Sign In Successful</h2>\
+                        <p>Authentication complete. You can close this window.</p>\
+                        </div></body></html>";
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        html.len(), html
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+
+                    // Emit the OAuth callback URL to the frontend.
+                    let _ = app.emit("oauth-callback", callback_url);
+                    break; // Done — exit the loop.
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(150));
+                    continue;
+                }
+                Err(e) => {
+                    let _ = app.emit("oauth-callback-error", e.to_string());
+                    break;
+                }
+            }
+        }
+    });
+
+    Ok(port)
+}
+
 
 #[tauri::command]
 pub fn login(

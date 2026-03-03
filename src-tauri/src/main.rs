@@ -38,6 +38,7 @@ fn main() {
             auth_commands::delete_user,
             auth_commands::reset_user_password,
             auth_commands::change_own_password,
+            auth_commands::start_google_auth,
             // Employee commands
             commands::init_database,
             commands::get_employees,

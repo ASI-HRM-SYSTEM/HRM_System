@@ -10,14 +10,21 @@ function FirebaseLogin() {
     const { status, firebaseUser, signInWithGoogle, signOut, error } = useFirebaseAuth();
 
     // ── Loading spinner ───────────────────────────────────────────────────────
-    if (status === "loading" || status === "checking") {
+    if (status === "loading" || status === "checking" || status === "redirecting") {
+        const message =
+            status === "checking"    ? "Verifying access…" :
+            status === "redirecting" ? "Opening Google sign-in… please wait" :
+            "Checking authentication…";
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
                 <div className="text-center text-white">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
-                    <p className="text-blue-300 text-sm">
-                        {status === "checking" ? "Verifying access…" : "Checking authentication…"}
-                    </p>
+                    <p className="text-blue-300 text-sm">{message}</p>
+                    {status === "redirecting" && (
+                        <p className="text-gray-500 text-xs mt-2">
+                            You will be redirected to Google and returned automatically.
+                        </p>
+                    )}
                 </div>
             </div>
         );
