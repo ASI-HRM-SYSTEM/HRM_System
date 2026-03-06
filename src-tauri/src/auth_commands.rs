@@ -169,7 +169,7 @@ fn build_auth_page(firebase_config_json: &str) -> String {
   // Auto-start sign-in
   doSignIn();
 </script>
-</body></html>"#, firebase_config_json)
+</body></html>"#)
 }
 
 

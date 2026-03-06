@@ -1,0 +1,121 @@
+name: Dev Build & Release (No Google Auth)
+
+on:
+  push:
+    branches:
+      - dev-without-google-auth
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Get version
+        id: get_version
+        run: |
+          $VERSION = node -p "require('./package.json').version"
+          echo "version=$VERSION" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build Tauri app (Windows)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: dev-v${{ steps.get_version.outputs.version }}
+          releaseName: 'HRM System v${{ steps.get_version.outputs.version }} (Dev - No Google Auth)'
+          releaseBody: |
+            **Development build — Google authentication bypassed.**
+
+            This is a temporary release for immediate use. The app runs in local-only mode
+            (no Google Sign-In required). All employee data, images, and database operations
+            work normally. When the Google Auth version is ready, data can be migrated seamlessly.
+
+            ### Installation
+            Download and run the `.exe` installer below.
+          releaseDraft: false
+          prerelease: true
+
+  build-linux:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: build-windows
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Tauri app (Linux)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: dev-v${{ steps.get_version.outputs.version }}
+          releaseName: 'HRM System v${{ steps.get_version.outputs.version }} (Dev - No Google Auth)'
+          releaseBody: |
+            **Development build — Google authentication bypassed.**
+
+            This is a temporary release for immediate use. The app runs in local-only mode
+            (no Google Sign-In required). All employee data, images, and database operations
+            work normally. When the Google Auth version is ready, data can be migrated seamlessly.
+
+            ### Installation
+            - **Windows**: Download and run the `.exe` installer.
+            - **Linux**: Download the `.AppImage` file, make it executable, and run it.
+          releaseDraft: false
+          prerelease: true

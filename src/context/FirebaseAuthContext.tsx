@@ -33,6 +33,12 @@ import { listen } from "@tauri-apps/api/event";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, COMPANY_ID, FIREBASE_API_KEY, isFirebaseConfigured } from "../config/firebase";
 
+// ─── TEMPORARY BYPASS ─────────────────────────────────────────────────────────
+// Set to `true` to skip the Google Sign-In gate entirely.
+// Firebase & Firestore sync remain active — only the auth wall is removed.
+// When switching back to the google-auth branch, set this to `false` or remove it.
+const BYPASS_GOOGLE_AUTH = true;
+
 // ─── Tauri detection ──────────────────────────────────────────────────────────
 // Tauri 2 always injects `window.__TAURI_INTERNALS__` into the WebView.
 // `window.__TAURI__` requires `withGlobalTauri: true` in tauri.conf.json.
@@ -63,7 +69,7 @@ const FirebaseAuthContext = createContext<FirebaseAuthContextValue | null>(null)
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     const [status, setStatus] = useState<FirebaseAuthStatus>(
-        isFirebaseConfigured() ? "loading" : "unconfigured"
+        BYPASS_GOOGLE_AUTH ? "unconfigured" : (isFirebaseConfigured() ? "loading" : "unconfigured")
     );
     const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -106,6 +112,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
 
     // ── Effect: startup auth check ────────────────────────────────────────────
     useEffect(() => {
+        if (BYPASS_GOOGLE_AUTH) return; // Auth gate bypassed — skip listener setup
         if (!isFirebaseConfigured()) return;
 
         console.log("[FirebaseAuth] Setting up authentication... (Tauri:", isTauri(), ")");
