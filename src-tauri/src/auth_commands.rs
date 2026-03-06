@@ -5,87 +5,95 @@ use std::net::TcpListener;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, State};
 
-const GOOGLE_OAUTH_CALLBACK_PORT: u16 = 43189;
+const OAUTH_PORT: u16 = 43189;
 
-/// Starts a temporary local HTTP server on a fixed localhost port to capture the OAuth callback.
-/// Returns the port so the frontend can build the redirect_uri as http://localhost:PORT.
-/// After receiving the OAuth callback request, emits "oauth-callback" with the full
-/// URL (e.g. "http://localhost:PORT/?code=...") to the frontend and closes.
+/// Starts a local HTTP server that:
+///   GET /auth  → serves an HTML page with Firebase JS SDK that does signInWithPopup
+///   GET /callback?idToken=...  → captures the token and emits it to the Tauri frontend
+///
+/// The system browser opens http://localhost:PORT/auth. Firebase's own popup flow
+/// handles Google OAuth with its pre-registered redirect URIs — no redirect_uri_mismatch.
 #[tauri::command]
-pub async fn start_google_auth(app: tauri::AppHandle) -> Result<u16, String> {
-    // Google OAuth requires an exact redirect URI match.
-    // Use a fixed localhost callback port (must be registered in OAuth client settings).
-    let listener = TcpListener::bind(("localhost", GOOGLE_OAUTH_CALLBACK_PORT)).map_err(|e| {
-        format!(
-            "Failed to bind OAuth callback port {} on localhost: {}",
-            GOOGLE_OAUTH_CALLBACK_PORT, e
-        )
+pub async fn start_google_auth(
+    app: tauri::AppHandle,
+    firebase_config: String,
+) -> Result<u16, String> {
+    let listener = TcpListener::bind(("127.0.0.1", OAUTH_PORT)).map_err(|e| {
+        format!("Port {} busy: {}", OAUTH_PORT, e)
     })?;
-    let port = GOOGLE_OAUTH_CALLBACK_PORT;
 
-    // Spawn a background thread to wait for the OAuth callback.
     std::thread::spawn(move || {
         listener.set_nonblocking(true).ok();
-
-        // Set a 5-minute deadline: if no callback arrives, the thread exits cleanly.
         let deadline = Instant::now() + Duration::from_secs(300);
+
+        // Build the HTML auth page once — it embeds the Firebase config.
+        let auth_html = build_auth_page(&firebase_config);
 
         loop {
             if Instant::now() >= deadline {
-                let _ = app.emit("oauth-callback-error", "Sign-in timed out. Please try again.");
+                let _ = app.emit("oauth-callback-error", "Sign-in timed out.");
                 break;
             }
 
-            // Accept the next browser connection.
             match listener.accept() {
                 Ok((mut stream, _)) => {
-                    // Give the browser up to 2s to send the request.
-                    stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
+                    stream.set_read_timeout(Some(Duration::from_secs(2))).ok();
+                    let mut buf = [0u8; 8192];
+                    let n = stream.read(&mut buf).unwrap_or(0);
+                    let req = String::from_utf8_lossy(&buf[..n]);
 
-                    let mut buffer = [0u8; 8192];
-                    let bytes_read = stream.read(&mut buffer).unwrap_or(0);
-                    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
-
-                    // HTTP request line: "GET /path HTTP/1.1"
-                    let path = request
-                        .lines()
-                        .next()
-                        .and_then(|line| line.split_whitespace().nth(1))
+                    let path = req.lines().next()
+                        .and_then(|l| l.split_whitespace().nth(1))
                         .unwrap_or("/");
 
-                    // Skip favicon.ico and any other non-callback requests.
-                    // The real OAuth callback always has query parameters (code=, state=, etc.)
-                    if path == "/favicon.ico" || path == "/" || !path.contains('?') {
-                        // Respond with a minimal 204 and keep waiting.
-                        let _ = stream.write_all(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
-                        continue;
+                    // ── Serve the Firebase auth page ─────────────────────────
+                    if path == "/auth" {
+                        let resp = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\
+                             Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+                            auth_html.len(), auth_html
+                        );
+                        let _ = stream.write_all(resp.as_bytes());
+                        continue; // keep listening for /callback
                     }
 
-                    let callback_url = format!("http://localhost:{}{}", port, path);
+                    // ── Capture the token callback ───────────────────────────
+                    if path.starts_with("/callback?") {
+                        // Extract idToken from query string
+                        let qs = &path["/callback?".len()..];
+                        let id_token = qs.split('&')
+                            .find_map(|pair| {
+                                let (k, v) = pair.split_once('=')?;
+                                if k == "idToken" { Some(v.to_string()) } else { None }
+                            });
 
-                    // Respond with a styled success page.
-                    let html = "<html><head><title>Sign In Successful</title>\
-                        <style>body{font-family:sans-serif;display:flex;justify-content:center;\
-                        align-items:center;height:100vh;margin:0;background:#0f172a;color:#e2e8f0;}\
-                        .card{text-align:center;padding:2rem;border-radius:1rem;\
-                        background:#1e293b;border:1px solid #334155;}\
-                        h2{color:#4ade80;margin-bottom:0.5rem;}p{color:#94a3b8;}</style></head>\
-                        <body><div class=\"card\"><h2>&#10003; Sign In Successful</h2>\
-                        <p>Authentication complete. You can close this window.</p>\
-                        </div></body></html>";
-                    let response = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                        html.len(), html
-                    );
-                    let _ = stream.write_all(response.as_bytes());
+                        let success_html = "<html><head><title>Sign In OK</title>\
+                            <style>body{font-family:sans-serif;display:flex;justify-content:center;\
+                            align-items:center;height:100vh;margin:0;background:#0f172a;color:#e2e8f0;}\
+                            .c{text-align:center;padding:2rem;border-radius:1rem;\
+                            background:#1e293b;border:1px solid #334155;}\
+                            h2{color:#4ade80;}p{color:#94a3b8;}</style></head>\
+                            <body><div class=\"c\"><h2>&#10003; Sign In Successful</h2>\
+                            <p>You can close this tab and return to the app.</p></div></body></html>";
+                        let resp = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\
+                             Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+                            success_html.len(), success_html
+                        );
+                        let _ = stream.write_all(resp.as_bytes());
 
-                    // Emit the OAuth callback URL to the frontend.
-                    let _ = app.emit("oauth-callback", callback_url);
-                    break; // Done — exit the loop.
+                        match id_token {
+                            Some(token) => { let _ = app.emit("oauth-callback", token); }
+                            None => { let _ = app.emit("oauth-callback-error", "No token received"); }
+                        }
+                        break;
+                    }
+
+                    // ── Anything else (favicon, etc.) ────────────────────────
+                    let _ = stream.write_all(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     std::thread::sleep(Duration::from_millis(150));
-                    continue;
                 }
                 Err(e) => {
                     let _ = app.emit("oauth-callback-error", e.to_string());
@@ -95,7 +103,73 @@ pub async fn start_google_auth(app: tauri::AppHandle) -> Result<u16, String> {
         }
     });
 
-    Ok(port)
+    Ok(OAUTH_PORT)
+}
+
+/// Builds an HTML page that loads Firebase JS SDK from CDN and performs
+/// Google signInWithPopup. On success, redirects to /callback?idToken=...
+fn build_auth_page(firebase_config_json: &str) -> String {
+    format!(r#"<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"><title>HRM Sign In</title>
+<style>
+  body {{ font-family: -apple-system, sans-serif; display: flex; justify-content: center;
+         align-items: center; height: 100vh; margin: 0; background: #0f172a; color: #e2e8f0; }}
+  .card {{ text-align: center; padding: 2.5rem; border-radius: 1rem; background: #1e293b;
+           border: 1px solid #334155; max-width: 400px; width: 90%; }}
+  h2 {{ margin: 0 0 0.5rem; color: #60a5fa; }}
+  p {{ color: #94a3b8; font-size: 0.9rem; margin: 0.5rem 0; }}
+  .spinner {{ border: 3px solid #334155; border-top: 3px solid #60a5fa; border-radius: 50%;
+              width: 40px; height: 40px; animation: spin 0.8s linear infinite; margin: 1.5rem auto; }}
+  @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+  .err {{ color: #f87171; margin-top: 1rem; }}
+  button {{ background: white; color: #1e293b; border: none; padding: 12px 24px; border-radius: 8px;
+           font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }}
+  button:hover {{ background: #e2e8f0; }}
+  .hidden {{ display: none; }}
+</style>
+</head><body>
+<div class="card">
+  <h2>New Lanka Clothing</h2>
+  <p>HRM System — Google Sign-In</p>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Connecting to Google…</p>
+  </div>
+  <div id="error" class="hidden">
+    <p class="err" id="errMsg"></p>
+    <button onclick="doSignIn()">Try Again</button>
+  </div>
+</div>
+<script type="module">
+  import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+  import {{ getAuth, signInWithPopup, GoogleAuthProvider }} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+
+  const config = {firebase_config_json};
+  const app = initializeApp(config);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({{ prompt: 'select_account' }});
+
+  window.doSignIn = async function() {{
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('error').classList.add('hidden');
+    try {{
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      // Send token back to local server → Tauri app
+      window.location.href = '/callback?idToken=' + encodeURIComponent(idToken);
+    }} catch (err) {{
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error').classList.remove('hidden');
+      document.getElementById('errMsg').textContent = err.message || 'Sign-in failed';
+    }}
+  }};
+
+  // Auto-start sign-in
+  doSignIn();
+</script>
+</body></html>"#, firebase_config_json)
 }
 
 
