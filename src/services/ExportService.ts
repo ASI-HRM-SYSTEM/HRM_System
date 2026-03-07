@@ -6,6 +6,7 @@
 import type { Employee } from "../types/employee";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { open } from "@tauri-apps/plugin-shell";
 
 // Re-export for convenience
 export type ExportFormat = 'excel' | 'csv' | 'pdf';
@@ -114,7 +115,6 @@ export class ExportService {
       if (filePath) {
         await writeTextFile(filePath, htmlContent);
         // Open the file in browser for printing
-        const { open } = await import("@tauri-apps/plugin-shell");
         await open(filePath);
       }
     } catch (error) {

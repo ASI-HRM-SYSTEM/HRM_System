@@ -1,9 +1,9 @@
 import { APP_CONFIG } from "../config/appConfig";
+import { open } from "@tauri-apps/plugin-shell";
 
 function Footer() {
   const handleClick = async () => {
     // Open LinkedIn profile in default browser
-    const { open } = await import("@tauri-apps/plugin-shell");
     await open(APP_CONFIG.linkedinUrl);
   };
 

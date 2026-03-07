@@ -16,7 +16,6 @@ import DailyCaderReport from "./components/DailyCaderReport";
 import FirebaseLogin from "./components/FirebaseLogin";
 import About from "./components/About";
 import TermsAndConditions from "./components/TermsAndConditions";
-import { APP_CONFIG } from "./config/appConfig";
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
