@@ -19,6 +19,19 @@ net::ERR_BLOCKED_BY_CLIENT (ad blocker blocking Google Play analytics - not crit
 Repeated account chooser calls without completing authentication
 ```
 
+### Issue 3: Invalid Credential Error (Third Implementation)
+**Symptom:** After successful Google sign-in in browser, app shows:  
+```
+Firebase: Invalid id_token in IdP response: [JWT token]
+error: id token is not issued by Google. (auth/invalid-credential)
+```
+**Root Cause:** Extracted Firefox ID token (`result.user.getIdToken()`) instead of Google OAuth ID token  
+**Why it happened:** Two different token types exist after successful sign-in:
+- **Google OAuth ID token**: Issued by `https://accounts.google.com` - needed for `GoogleAuthProvider.credential()`
+- **Firebase ID token**: Issued by `https://securetoken.google.com/newlanka-hrm` - for Firebase services
+
+**JWT Analysis:** The token we were sending had issuer `"iss": "https://securetoken.google.com/newlanka-hrm"` proving it was a Firebase token, not a Google token.
+
 ## Solution: Button-Triggered Popup in External Browser
 
 ### Why This Approach Works
@@ -59,21 +72,33 @@ User is authenticated ✅
 
 **1. Auth Page HTML (src-tauri/src/auth_commands.rs)**
 ```javascript
-// Button-triggered popup (NEW - WORKS)
+// CORRECT: Extract Google OAuth credential
 window.doSignIn = async function() {
   const btn = document.getElementById('signInBtn');
   btn.disabled = true;
   
   try {
     const result = await signInWithPopup(auth, provider);
-    const idToken = await result.user.getIdToken();
+    
+        // Extract Google OAuth credential (NOT Firebase token)
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const idToken = credential.idToken; // Google OAuth ID token ✅
+    
+        if (!idToken) {
+            throw new Error('Failed to get Google OAuth token');
+        }
+    
     window.location.href = '/callback?idToken=' + encodeURIComponent(idToken);
   } catch (err) {
     // Error handling
   }
 };
 
-// VS. Auto-triggered redirect (OLD - CAUSED LOOP)
+// WRONG: Gets Firebase token instead of Google token ❌
+// const idToken = await result.user.getIdToken();
+// This returns a Firebase ID token, not the Google OAuth token!
+
+// ALSO WRONG: Auto-triggered redirect (CAUSED LOOP) ❌
 // window.onload = async function() {
 //   await signInWithRedirect(auth, provider);
 //   const result = await getRedirectResult(auth);
@@ -140,7 +165,8 @@ window.doSignIn = async function() {
 |----------|--------------|---------------|-----------------|---------|
 | Auto signInWithPopup | ❌ Blocked | N/A | Confusing errors | Failed |
 | Auto signInWithRedirect | ✅ No popup | ❌ Infinite loop | Stuck at account selector | Failed |
-| Button signInWithPopup | ✅ User-triggered | ✅ Stays on localhost | Single button click | **Success** ✅ |
+| Button signInWithPopup (Firebase token) | ✅ User-triggered | ✅ Stays on localhost | Invalid credential error | Failed |
+| Button signInWithPopup (Google OAuth token) | ✅ User-triggered | ✅ Stays on localhost | Single button click | **Success** ✅ |
 
 ## Browser Compatibility
 
@@ -176,9 +202,10 @@ Tested and working on:
 
 ## Version History
 
-- **v1.2.x:** Auto-triggered signInWithPopup (popup blocker issues)
-- **v1.3.0:** Auto-triggered signInWithRedirect (redirect loop issues)
-- **v1.4.0-dev (current):** Button-triggered signInWithPopup ✅
+- **v1.2.x:** Auto-triggered signInWithPopup (popup blocker issues) ❌
+- **v1.3.0:** Auto-triggered signInWithRedirect (redirect loop issues) ❌
+- **v1.4.0-dev:** Button-triggered signInWithPopup (initially Firebase token - invalid credential) ❌
+- **v1.4.0-dev (current):** Button-triggered signInWithPopup with correct Google OAuth token ✅
 
 ## Contact
 
@@ -190,6 +217,6 @@ For issues or questions about Google authentication:
 
 ---
 
-**Last Updated:** February 6, 2026  
+**Last Updated:** March 7, 2026  
 **Status:** ✅ Working solution implemented  
 **Target Users:** Non-technical factory staff (simple, one-click experience)
