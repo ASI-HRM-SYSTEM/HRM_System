@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "sync:template": "bash ./scripts/sync-template.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",

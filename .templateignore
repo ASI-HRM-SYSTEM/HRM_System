@@ -1,0 +1,69 @@
+# ==============================================================================
+# Template Sync Ignore Configuration
+# ==============================================================================
+# This file lists paths that should NEVER be synced from the template.
+# These are typically company-specific files that contain personalization.
+#
+# The sync-template.sh script automatically preserves these files by default:
+#   - src/config/appConfig.ts
+#   - .env
+#   - src-tauri/tauri.conf.json
+#   - src-tauri/Cargo.toml
+#   - package.json
+#   - firestore.rules
+#   - Company logos and icons
+#
+# Use this file to add ADDITIONAL paths that should be preserved or excluded.
+# ==============================================================================
+
+# Template Documentation (excluded from production instances)
+# Production instances only need README.md with basic run instructions
+TEMPLATE_*.md
+FIREBASE_STRATEGY.md
+LOCAL_DATABASE_IMPLEMENTATION.md
+PRODUCTION_RELEASE_SUMMARY.md
+PROJECT_DOCS.md
+QUICK_RELEASE_GUIDE.md
+RELEASE_NOTES_*.md
+TEMPLATE_IMPLEMENTATION_SUMMARY.md
+docs/
+
+# Company-specific data files
+employees_*.csv
+Employees_Report_*.html
+*.db
+*.sqlite
+
+# Custom reports and exports
+exports/
+reports/
+
+# Company-specific documentation
+COMPANY_*.md
+INTERNAL_*.md
+
+# Custom configurations
+config/company.json
+config/custom-settings.ts
+
+# Local development files (already in .gitignore but listed for clarity)
+.env.local
+.env.production
+
+# Company branding assets
+public/custom-logo.png
+public/company-banner.jpg
+assets/company/
+
+# Custom themes or styles
+src/styles/company-theme.css
+src/styles/custom-colors.ts
+
+# ==============================================================================
+# Instructions
+# ==============================================================================
+# 1. Files listed here will NOT be synced from template to production
+# 2. Use glob patterns (e.g., *.csv, docs/*, etc.)
+# 3. Lines starting with # are comments and will be ignored
+# 4. Empty lines are ignored
+# ==============================================================================

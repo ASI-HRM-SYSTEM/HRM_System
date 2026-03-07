@@ -1,0 +1,128 @@
+name: Sync with Template
+
+# ==============================================================================
+# Template Synchronization Workflow
+# ==============================================================================
+# This workflow automatically syncs your project with the HRM_System template
+# repository when changes are pushed to the template's main branch.
+#
+# The workflow preserves company-specific files listed in sync-template.sh
+# ==============================================================================
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC to check for template updates
+    - cron: '0 2 * * *'
+  
+  workflow_dispatch:
+    # Allow manual triggering from GitHub UI
+    inputs:
+      branch:
+        description: 'Template branch to sync from'
+        required: false
+        default: 'main'
+
+  repository_dispatch:
+    # Allow triggering from template repository via webhook
+    types: [template-updated]
+
+jobs:
+  sync-template:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔧 Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: 🔍 Check for template updates
+        id: check_updates
+        run: |
+          TEMPLATE_REMOTE="upstream"
+          TEMPLATE_URL="https://github.com/ASI-HRM-SYSTEM/HRM_System.git"
+          TEMPLATE_BRANCH="${{ github.event.inputs.branch || 'main' }}"
+          
+          # Add template remote if not exists
+          if ! git remote get-url "$TEMPLATE_REMOTE" >/dev/null 2>&1; then
+            git remote add "$TEMPLATE_REMOTE" "$TEMPLATE_URL"
+          fi
+          
+          # Fetch template updates
+          git fetch "$TEMPLATE_REMOTE" "$TEMPLATE_BRANCH"
+          
+          # Check if there are new commits
+          BEHIND_COUNT=$(git rev-list --count HEAD.."$TEMPLATE_REMOTE/$TEMPLATE_BRANCH")
+          
+          echo "behind_count=$BEHIND_COUNT" >> $GITHUB_OUTPUT
+          
+          if [ "$BEHIND_COUNT" -gt 0 ]; then
+            echo "✅ Found $BEHIND_COUNT new commits in template"
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️ No template updates available"
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 🔄 Sync with template
+        if: steps.check_updates.outputs.has_updates == 'true'
+        run: |
+          chmod +x ./scripts/sync-template.sh
+          ./scripts/sync-template.sh "${{ github.event.inputs.branch || 'main' }}"
+      
+      - name: 📤 Push changes
+        if: steps.check_updates.outputs.has_updates == 'true'
+        run: |
+          git push origin ${{ github.ref_name }}
+      
+      - name: 📝 Create Pull Request (optional)
+        if: steps.check_updates.outputs.has_updates == 'true' && false
+        # Set the condition above to 'true' if you want to create PRs instead of direct push
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 🔄 Sync with template
+          title: '🔄 Sync with HRM_System template'
+          body: |
+            ## Template Sync
+            
+            This PR syncs the latest changes from the [HRM_System template](https://github.com/ASI-HRM-SYSTEM/HRM_System).
+            
+            ### Changes
+            - Synced ${{ steps.check_updates.outputs.behind_count }} commits from template
+            - Preserved company-specific personalization files
+            
+            ### Preserved Files
+            - `src/config/appConfig.ts`
+            - `.env`
+            - `src-tauri/tauri.conf.json`
+            - `src-tauri/Cargo.toml`
+            - `package.json`
+            - Company logos and icons
+            
+            ### Next Steps
+            1. Review the changes
+            2. Test the application locally
+            3. Merge this PR when ready
+          branch: template-sync
+          delete-branch: true
+      
+      - name: 📊 Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check_updates.outputs.has_updates }}" == "true" ]; then
+            echo "✅ Template sync completed successfully!"
+            echo "📝 Synced ${{ steps.check_updates.outputs.behind_count }} commits"
+          else
+            echo "ℹ️ No template updates available. Already up to date!"
+          fi
