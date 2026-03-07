@@ -8,11 +8,13 @@ use tauri::{Emitter, State};
 const OAUTH_PORT: u16 = 43189;
 
 /// Starts a local HTTP server that:
-///   GET /auth  → serves an HTML page with Firebase JS SDK that does signInWithPopup
+///   GET /auth  → serves an HTML page with Firebase JS SDK that does signInWithRedirect
 ///   GET /callback?idToken=...  → captures the token and emits it to the Tauri frontend
 ///
-/// The system browser opens http://localhost:PORT/auth. Firebase's own popup flow
-/// handles Google OAuth with its pre-registered redirect URIs — no redirect_uri_mismatch.
+/// The system browser opens http://localhost:PORT/auth. The page immediately redirects
+/// to Google's authentication. After sign-in, Google redirects back and the page extracts
+/// the token, then navigates to /callback which the Rust server captures.
+/// This avoids popup blockers entirely.
 #[tauri::command]
 pub async fn start_google_auth(
     app: tauri::AppHandle,
@@ -107,7 +109,7 @@ pub async fn start_google_auth(
 }
 
 /// Builds an HTML page that loads Firebase JS SDK from CDN and performs
-/// Google signInWithPopup. On success, redirects to /callback?idToken=...
+/// Google signInWithRedirect. On return from Google, extracts token and sends to /callback.
 fn build_auth_page(firebase_config_json: &str) -> String {
     format!(r#"<!DOCTYPE html>
 <html><head>
@@ -122,7 +124,7 @@ fn build_auth_page(firebase_config_json: &str) -> String {
   .spinner {{ border: 3px solid #334155; border-top: 3px solid #60a5fa; border-radius: 50%;
               width: 40px; height: 40px; animation: spin 0.8s linear infinite; margin: 1.5rem auto; }}
   @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-  .err {{ color: #f87171; margin-top: 1rem; }}
+  .err {{ color: #f87171; margin-top: 1rem; font-weight: 600; }}
   button {{ background: white; color: #1e293b; border: none; padding: 12px 24px; border-radius: 8px;
            font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 1rem; }}
   button:hover {{ background: #e2e8f0; }}
@@ -134,16 +136,16 @@ fn build_auth_page(firebase_config_json: &str) -> String {
   <p>HRM System — Google Sign-In</p>
   <div id="loading">
     <div class="spinner"></div>
-    <p>Connecting to Google…</p>
+    <p id="statusMsg">Redirecting to Google…</p>
   </div>
   <div id="error" class="hidden">
     <p class="err" id="errMsg"></p>
-    <button onclick="doSignIn()">Try Again</button>
+    <button onclick="location.reload()">Try Again</button>
   </div>
 </div>
 <script type="module">
   import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-  import {{ getAuth, signInWithPopup, GoogleAuthProvider }} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+  import {{ getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider }} from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 
   const config = {firebase_config_json};
   const app = initializeApp(config);
@@ -151,23 +153,32 @@ fn build_auth_page(firebase_config_json: &str) -> String {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({{ prompt: 'select_account' }});
 
-  window.doSignIn = async function() {{
-    document.getElementById('loading').classList.remove('hidden');
-    document.getElementById('error').classList.add('hidden');
+  async function handleAuth() {{
     try {{
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      // Send token back to local server → Tauri app
-      window.location.href = '/callback?idToken=' + encodeURIComponent(idToken);
+      // Check if we're returning from Google redirect
+      const result = await getRedirectResult(auth);
+      
+      if (result && result.user) {{
+        // Successfully signed in - extract token and send to callback
+        document.getElementById('statusMsg').textContent = 'Sign-in successful! Redirecting...';
+        const idToken = await result.user.getIdToken();
+        console.log('[Auth] Got token, redirecting to callback...');
+        window.location.href = '/callback?idToken=' + encodeURIComponent(idToken);
+      }} else {{
+        // First visit - redirect to Google for sign-in
+        console.log('[Auth] Starting Google sign-in redirect...');
+        await signInWithRedirect(auth, provider);
+      }}
     }} catch (err) {{
+      console.error('[Auth] Error:', err);
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('error').classList.remove('hidden');
-      document.getElementById('errMsg').textContent = err.message || 'Sign-in failed';
+      document.getElementById('errMsg').textContent = err.message || 'Sign-in failed. Please try again.';
     }}
-  }};
+  }}
 
-  // Auto-start sign-in
-  doSignIn();
+  // Start authentication flow immediately
+  handleAuth();
 </script>
 </body></html>"#)
 }

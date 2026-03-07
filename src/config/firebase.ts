@@ -8,7 +8,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: import.meta.env.VITE_FB_API_KEY,
     authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FB_PROJECT_ID,

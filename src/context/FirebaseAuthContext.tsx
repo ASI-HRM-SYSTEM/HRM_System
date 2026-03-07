@@ -5,13 +5,14 @@
  *
  * ── Auth strategy ──────────────────────────────────────────────────────────────
  * Tauri desktop app:
- *   1. Rust starts a local TCP server on a random port (start_google_auth command)
- *   2. Firebase REST API builds the Google OAuth URL with redirect_uri=127.0.0.1:PORT
- *   3. System browser opens the URL (shell:allow-open)
- *   4. Google authenticates → redirects to local server
- *   5. Rust captures the callback URL, emits "oauth-callback" event
- *   6. Frontend calls Firebase signInWithIdp REST API → gets idToken
- *   7. signInWithCredential(auth, GoogleAuthProvider.credential(idToken)) ✅
+ *   1. Rust starts a local TCP server (start_google_auth command)
+ *   2. System browser opens http://localhost:PORT/auth
+ *   3. Browser page immediately redirects to Google sign-in (signInWithRedirect)
+ *   4. User signs in with Google account
+ *   5. Google redirects back to http://localhost:PORT/auth
+ *   6. Page extracts token and redirects to /callback?idToken=...
+ *   7. Rust captures token and emits "oauth-callback" event
+ *   8. Frontend signs in via signInWithCredential with that token ✅
  *
  * Regular browser:
  *   signInWithPopup (standard, reliable in proper browser context)
@@ -31,13 +32,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { listen } from "@tauri-apps/api/event";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db, COMPANY_ID, FIREBASE_API_KEY, isFirebaseConfigured } from "../config/firebase";
+import { auth, db, COMPANY_ID, firebaseConfig, isFirebaseConfigured } from "../config/firebase";
 
 // ─── TEMPORARY BYPASS ─────────────────────────────────────────────────────────
 // Set to `true` to skip the Google Sign-In gate entirely.
 // Firebase & Firestore sync remain active — only the auth wall is removed.
 // When switching back to the google-auth branch, set this to `false` or remove it.
-const BYPASS_GOOGLE_AUTH = true;
+const BYPASS_GOOGLE_AUTH = false;
 
 // ─── Tauri detection ──────────────────────────────────────────────────────────
 // Tauri 2 always injects `window.__TAURI_INTERNALS__` into the WebView.
@@ -166,46 +167,22 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         setStatus("redirecting");
 
         try {
-            // 1. Start local TCP server — Rust returns the port it's listening on.
-            const port = await invoke<number>("start_google_auth");
+            // 1. Start local TCP server and inject Firebase config into served auth page.
+            const firebaseConfigJson = JSON.stringify(firebaseConfig);
+            const port = await invoke<number>("start_google_auth", {
+                firebaseConfig: firebaseConfigJson,
+            });
             console.log("[FirebaseAuth] Local OAuth server listening on port:", port);
 
-            const redirectUri = `http://localhost:${port}`;
-            console.log("[FirebaseAuth] Redirect URI for OAuth:", redirectUri);
-            console.log("[FirebaseAuth] Firebase API Key set:", !!FIREBASE_API_KEY);
+            // 2. Open the local auth page in system browser (NOT Tauri WebView).
+            const authUrl = `http://localhost:${port}/auth`;
+            console.log("[FirebaseAuth] Opening system browser for:", authUrl);
+            await shellOpen(authUrl);
 
-            // 2. Ask Firebase REST API for the Google OAuth URL.
-            console.log("[FirebaseAuth] Calling createAuthUri...");
-            const createAuthRes = await fetch(
-                `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${FIREBASE_API_KEY}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        providerId: "google.com",
-                        continueUri: redirectUri,
-                    }),
-                }
-            );
-
-            if (!createAuthRes.ok) {
-                const errData = await createAuthRes.json().catch(() => ({}));
-                console.error("[FirebaseAuth] createAuthUri error response:", errData);
-                throw new Error(errData?.error?.message || `createAuthUri failed: ${createAuthRes.status}`);
-            }
-
-            const authResponse = await createAuthRes.json();
-            const { authUri } = authResponse;
-            console.log("[FirebaseAuth] Received authUri:", authUri);
-            console.log("[FirebaseAuth] Opening system browser for Google auth...");
-
-            // 3. Open Google OAuth URL in the system browser (NOT the Tauri WebView).
-            await shellOpen(authUri);
-
-            // 4. Wait for the Rust server to emit the callback URL.
-            const oauthCallbackUrl = await new Promise<string>((resolve, reject) => {
+            // 3. Wait for Rust server to emit the Google ID token.
+            const idToken = await new Promise<string>((resolve, reject) => {
                 const timeout = setTimeout(
-                    () => reject(new Error(`Sign-in timed out. Verify redirect URI is registered: ${redirectUri}`)),
+                    () => reject(new Error("Sign-in timed out. Please try again.")),
                     5 * 60 * 1000
                 );
 
@@ -226,41 +203,15 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
                 });
             });
 
-            console.log("[FirebaseAuth] Received OAuth callback URL.");
+            console.log("[FirebaseAuth] Received Google token from local callback.");
 
-            // 5. Exchange the callback URL for Firebase credentials via REST API.
-            const signInRes = await fetch(
-                `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        requestUri: oauthCallbackUrl,
-                        returnIdpCredential: true,
-                        returnSecureToken: true,
-                    }),
-                }
-            );
-
-            if (!signInRes.ok) {
-                const errData = await signInRes.json().catch(() => ({}));
-                throw new Error(errData?.error?.message || `signInWithIdp failed: ${signInRes.status}`);
-            }
-
-            const signInData = await signInRes.json();
-            const idToken: string = signInData.oauthIdToken || signInData.idToken;
-
-            if (!idToken) {
-                throw new Error("Google did not return an ID token. Please try again.");
-            }
-
-            // 6. Sign in to Firebase with the Google ID token.
+            // 4. Sign in to Firebase with the Google ID token.
             console.log("[FirebaseAuth] Signing in with Google credential...");
             const credential = GoogleAuthProvider.credential(idToken);
             const result = await signInWithCredential(auth, credential);
             console.log("[FirebaseAuth] ✅ Signed in as:", result.user.email);
 
-            // 7. Check allowlist and update status.
+            // 5. Check allowlist and update status.
             await handleSignedInUser(result.user);
 
         } catch (err: any) {
