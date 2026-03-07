@@ -7,11 +7,11 @@
  * Tauri desktop app:
  *   1. Rust starts a local TCP server (start_google_auth command)
  *   2. System browser opens http://localhost:PORT/auth
- *   3. Browser page immediately redirects to Google sign-in (signInWithRedirect)
- *   4. User signs in with Google account
- *   5. Google redirects back to http://localhost:PORT/auth
- *   6. Page extracts token and redirects to /callback?idToken=...
- *   7. Rust captures token and emits "oauth-callback" event
+ *   3. User clicks "Continue with Google" button
+ *   4. signInWithPopup opens Google auth (works fine in external browser)
+ *   5. User signs in with Google account
+ *   6. Popup closes, page gets token and redirects to /callback?idToken=...
+ *   7. Rust captures token and emits "oauth-callback" event  
  *   8. Frontend signs in via signInWithCredential with that token ✅
  *
  * Regular browser:
