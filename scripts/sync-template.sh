@@ -106,18 +106,37 @@ echo "   Backed up $BACKUP_COUNT files"
 
 echo ""
 echo "🔄 Merging template branch..."
-if ! git merge --no-ff --no-commit "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH"; then
-  echo ""
-  echo "⚠️  Merge requires manual conflict resolution."
-  echo ""
-  echo "To resolve conflicts:"
-  echo "  1. Edit the conflicting files"
-  echo "  2. git add <resolved-files>"
-  echo "  3. git commit"
-  echo ""
-  echo "Your personalization files are still backed up at: $BACKUP_DIR"
-  echo "You can manually restore them if needed."
-  exit 1
+MERGE_OUTPUT=""
+if ! MERGE_OUTPUT="$(git merge --no-ff --no-commit "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH" 2>&1)"; then
+  if grep -q "refusing to merge unrelated histories" <<< "$MERGE_OUTPUT"; then
+    echo "   Detected unrelated histories. Retrying first sync with --allow-unrelated-histories..."
+    if ! git merge --no-ff --no-commit --allow-unrelated-histories "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH"; then
+      echo ""
+      echo "⚠️  Merge requires manual conflict resolution."
+      echo ""
+      echo "To resolve conflicts:"
+      echo "  1. Edit the conflicting files"
+      echo "  2. git add <resolved-files>"
+      echo "  3. git commit"
+      echo ""
+      echo "Your personalization files are still backed up at: $BACKUP_DIR"
+      echo "You can manually restore them if needed."
+      exit 1
+    fi
+  else
+    echo "$MERGE_OUTPUT"
+    echo ""
+    echo "⚠️  Merge requires manual conflict resolution."
+    echo ""
+    echo "To resolve conflicts:"
+    echo "  1. Edit the conflicting files"
+    echo "  2. git add <resolved-files>"
+    echo "  3. git commit"
+    echo ""
+    echo "Your personalization files are still backed up at: $BACKUP_DIR"
+    echo "You can manually restore them if needed."
+    exit 1
+  fi
 fi
 
 # ==============================================================================
