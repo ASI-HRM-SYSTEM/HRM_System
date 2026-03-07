@@ -110,7 +110,8 @@ MERGE_OUTPUT=""
 if ! MERGE_OUTPUT="$(git merge --no-ff --no-commit "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH" 2>&1)"; then
   if grep -q "refusing to merge unrelated histories" <<< "$MERGE_OUTPUT"; then
     echo "   Detected unrelated histories. Retrying first sync with --allow-unrelated-histories..."
-    if ! git merge --no-ff --no-commit --allow-unrelated-histories "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH"; then
+    echo "   Using template-preferred conflict strategy (-X theirs) for first baseline sync..."
+    if ! git merge --no-ff --no-commit --allow-unrelated-histories -X theirs "$TEMPLATE_REMOTE/$TEMPLATE_BRANCH"; then
       echo ""
       echo "⚠️  Merge requires manual conflict resolution."
       echo ""
