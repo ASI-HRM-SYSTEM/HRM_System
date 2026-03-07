@@ -1,7 +1,8 @@
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../types/auth";
+import { APP_CONFIG } from "../config/appConfig";
 
-export type PageType = "dashboard" | "cader" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings" | "backup" | "audit";
+export type PageType = "dashboard" | "cader" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings" | "backup" | "audit" | "about" | "terms";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -112,6 +113,15 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
         </svg>
       ),
     },
+    {
+      id: "about",
+      label: "About",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
   ];
 
   const getRoleLabel = (role: string): string => {
@@ -196,7 +206,7 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       )}
 
       <div className="p-4 border-t border-gray-200">
-        <p className="text-xs text-gray-400 text-center">Version 1.1.0</p>
+        <p className="text-xs text-gray-400 text-center">Version {APP_CONFIG.version}</p>
       </div>
     </aside>
   );

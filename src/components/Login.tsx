@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { APP_CONFIG } from "../config/appConfig";
 
 function Login() {
   const { login } = useAuth();
@@ -29,11 +30,11 @@ function Login() {
         <div className="text-center mb-8">
           <img
             src="/company-logo.jpg"
-            alt="New Lanka Clothing"
+            alt={APP_CONFIG.companyName}
             className="w-24 h-24 mx-auto mb-4 rounded-full shadow-lg object-cover"
           />
-          <h1 className="text-2xl font-bold text-gray-800">HRM System</h1>
-          <p className="text-gray-500 mt-1">New Lanka Clothing (Pvt) Ltd</p>
+          <h1 className="text-2xl font-bold text-gray-800">{APP_CONFIG.name}</h1>
+          <p className="text-gray-500 mt-1">{APP_CONFIG.companyName}</p>
         </div>
 
         {/* Login Form */}
@@ -94,7 +95,7 @@ function Login() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} New Lanka Clothing (Pvt) Ltd</p>
+          <p>&copy; {new Date().getFullYear()} {APP_CONFIG.companyName}</p>
         </div>
       </div>
     </div>

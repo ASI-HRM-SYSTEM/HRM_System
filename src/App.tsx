@@ -14,14 +14,14 @@ import DatabaseBackup from "./components/DatabaseBackup";
 import AuditLogViewer from "./components/AuditLogViewer";
 import DailyCaderReport from "./components/DailyCaderReport";
 import FirebaseLogin from "./components/FirebaseLogin";
-
-// Developer info - Update these with your details
-const DEVELOPER_NAME = "Asitha Kanchana";
-const LINKEDIN_URL = "https://www.linkedin.com/in/asithakanchana";
+import About from "./components/About";
+import TermsAndConditions from "./components/TermsAndConditions";
+import { APP_CONFIG } from "./config/appConfig";
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
+  const [showTerms, setShowTerms] = useState(false);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -150,6 +150,13 @@ function AppContent() {
             icon="🔒"
           />
         );
+      case "about":
+        if (showTerms) {
+          return <TermsAndConditions />;
+        }
+        return <About onOpenTerms={() => setShowTerms(true)} />;
+      case "terms":
+        return <TermsAndConditions />;
       default:
         return <Dashboard />;
     }
@@ -157,12 +164,18 @@ function AppContent() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <Sidebar 
+        currentPage={currentPage} 
+        setCurrentPage={(page) => {
+          setCurrentPage(page);
+          setShowTerms(false);
+        }} 
+      />
       <div className="flex-1 flex flex-col">
         <main className="flex-1 overflow-auto">
           {renderPage()}
         </main>
-        <Footer developerName={DEVELOPER_NAME} linkedinUrl={LINKEDIN_URL} />
+        <Footer />
       </div>
       <UpdateChecker />
     </div>

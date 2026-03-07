@@ -1,13 +1,10 @@
-interface FooterProps {
-  developerName: string;
-  linkedinUrl: string;
-}
+import { APP_CONFIG } from "../config/appConfig";
 
-function Footer({ developerName, linkedinUrl }: FooterProps) {
+function Footer() {
   const handleClick = async () => {
     // Open LinkedIn profile in default browser
     const { open } = await import("@tauri-apps/plugin-shell");
-    await open(linkedinUrl);
+    await open(APP_CONFIG.linkedinUrl);
   };
 
   return (
@@ -18,7 +15,7 @@ function Footer({ developerName, linkedinUrl }: FooterProps) {
           onClick={handleClick}
           className="text-primary-600 hover:text-primary-700 hover:underline font-medium transition-colors"
         >
-          {developerName}
+          {APP_CONFIG.developerName}
         </button>
         <svg 
           className="w-4 h-4 text-blue-600" 

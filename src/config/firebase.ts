@@ -1,27 +1,28 @@
 /**
  * Firebase App Initialization
- * Reads config from Vite environment variables (VITE_FB_*)
- * These are injected at build time from the .env file (never committed to git)
+ * Reads config from centralized ENV module (src/config/env.ts)
+ * Environment variables are injected at build time from the .env file (never committed to git)
  */
 
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
+import { ENV } from "./env";
 
 export const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FB_API_KEY,
-    authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FB_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FB_APP_ID,
+    apiKey: ENV.firebase.apiKey,
+    authDomain: ENV.firebase.authDomain,
+    projectId: ENV.firebase.projectId,
+    storageBucket: ENV.firebase.storageBucket,
+    messagingSenderId: ENV.firebase.messagingSenderId,
+    appId: ENV.firebase.appId,
 };
 
 // Company ID used as Firestore root path
-export const COMPANY_ID: string = import.meta.env.VITE_FB_COMPANY_ID || "newlanka";
+export const COMPANY_ID: string = ENV.firebase.companyId;
 
 // Firebase API key — also used by the local-server OAuth REST calls for Tauri
-export const FIREBASE_API_KEY: string = import.meta.env.VITE_FB_API_KEY || "";
+export const FIREBASE_API_KEY: string = ENV.firebase.apiKey;
 
 // Check whether Firebase is configured
 export const isFirebaseConfigured = (): boolean =>
