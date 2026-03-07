@@ -172,7 +172,14 @@ fn build_auth_page(firebase_config_json: &str) -> String {
     try {{
       console.log('[Auth] Starting Google sign-in popup...');
       const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
+      
+            // Extract Google OAuth credential (NOT Firebase token)
+            const credential = GoogleAuthProvider.credentialFromResult(result);
+            const idToken = credential.idToken;
+      
+            if (!idToken) {{
+                throw new Error('Failed to get Google OAuth token from sign-in result');
+            }}
       
       console.log('[Auth] Sign-in successful! Token received.');
       btnText.textContent = 'Success! Redirecting...';
