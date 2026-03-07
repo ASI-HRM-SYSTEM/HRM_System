@@ -35,9 +35,9 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: HRM System v${{ steps.get_version.outputs.version }}
+          body_path: ./RELEASE_NOTES_v${{ steps.get_version.outputs.version }}.md
           draft: false
           prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -84,6 +84,17 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Create .env file from secrets
+        shell: bash
+        run: |
+          echo "VITE_FB_API_KEY=${{ secrets.VITE_FB_API_KEY }}" >> .env
+          echo "VITE_FB_AUTH_DOMAIN=${{ secrets.VITE_FB_AUTH_DOMAIN }}" >> .env
+          echo "VITE_FB_PROJECT_ID=${{ secrets.VITE_FB_PROJECT_ID }}" >> .env
+          echo "VITE_FB_STORAGE_BUCKET=${{ secrets.VITE_FB_STORAGE_BUCKET }}" >> .env
+          echo "VITE_FB_MESSAGING_SENDER_ID=${{ secrets.VITE_FB_MESSAGING_SENDER_ID }}" >> .env
+          echo "VITE_FB_APP_ID=${{ secrets.VITE_FB_APP_ID }}" >> .env
+          echo "VITE_FB_COMPANY_ID=${{ secrets.VITE_FB_COMPANY_ID }}" >> .env
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
