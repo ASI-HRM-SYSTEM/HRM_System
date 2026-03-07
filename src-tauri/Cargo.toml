@@ -2,7 +2,7 @@
 name = "hrm-system"
 version = "2.0.0"
 description = "HR Management System - Template"
-authors = ["Asitha Kanchana Palliyaguru .."]
+authors = ["Your Name"]
 edition = "2021"
 
 [lib]
