@@ -116,6 +116,9 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     // Add missing permission columns to users table if they don't exist (for existing databases)
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0", []);
 
+    // Best-effort uniqueness enforcement for employee identifiers.
+    // If legacy duplicate data exists, these statements will fail silently and
+    // application-layer validation in commands.rs will still prevent new duplicates.
     let _ = conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_epf_unique_normalized
          ON employees (UPPER(TRIM(epf_number)))",

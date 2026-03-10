@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Employee } from "../types/employee";
 import type { UserPermissions } from "../types/auth";
+import EmployeeAvatar from "./EmployeeAvatar";
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -13,7 +14,7 @@ interface EmployeeTableProps {
 }
 
 // Component to load and display employee image
-function EmployeeImage({ imagePath }: { imagePath: string | null }) {
+function EmployeeImage({ imagePath, gender }: { imagePath: string | null; gender?: string | null }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,20 +28,14 @@ function EmployeeImage({ imagePath }: { imagePath: string | null }) {
   }, [imagePath]);
 
   if (!imageUrl) {
-    return (
-      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      </div>
-    );
+    return <EmployeeAvatar gender={gender} size="sm" />;
   }
 
   return (
     <img
       src={imageUrl}
       alt="Employee"
-      className="w-10 h-10 rounded-full object-cover border border-gray-200"
+      className="w-10 h-10 rounded-xl object-cover border border-slate-200"
     />
   );
 }
@@ -73,69 +68,69 @@ function EmployeeTable({ employees, loading, onEdit, onDelete, onOpen, permissio
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Photo
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 EPF No.
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Department
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Cader
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Designation
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Allocation
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Mobile
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-slate-200">
             {employees.map((employee) => (
-              <tr key={employee.epf_number} className="hover:bg-gray-50">
+              <tr key={employee.epf_number} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <EmployeeImage imagePath={employee.image_path} />
+                  <EmployeeImage imagePath={employee.image_path} gender={employee.gender} />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <span className="font-medium text-gray-900">{employee.epf_number}</span>
+                  <span className="font-semibold text-slate-800">{employee.epf_number}</span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{employee.name_with_initials}</p>
-                    <p className="text-sm text-gray-500">{employee.full_name}</p>
+                    <p className="text-sm font-semibold text-slate-800">{employee.name_with_initials}</p>
+                    <p className="text-sm text-slate-500">{employee.full_name}</p>
                   </div>
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                   {employee.department || "-"}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                   {employee.cader || "-"}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                   {employee.designation || "-"}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                   {employee.allocation || "-"}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                   {employee.mobile_1 || "-"}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
@@ -152,7 +147,7 @@ function EmployeeTable({ employees, loading, onEdit, onDelete, onOpen, permissio
                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                   <button
                     onClick={() => onOpen(employee.epf_number)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -163,7 +158,7 @@ function EmployeeTable({ employees, loading, onEdit, onDelete, onOpen, permissio
                   {permissions.can_edit_employees && (
                     <button
                       onClick={() => onEdit(employee)}
-                      className="text-primary-600 hover:text-primary-900"
+                      className="text-primary-600 hover:text-primary-900 font-medium"
                     >
                       Edit
                     </button>
@@ -171,7 +166,7 @@ function EmployeeTable({ employees, loading, onEdit, onDelete, onOpen, permissio
                   {permissions.can_delete_employees && (
                     <button
                       onClick={() => onDelete(employee.epf_number)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 font-medium"
                     >
                       Delete
                     </button>
@@ -183,8 +178,8 @@ function EmployeeTable({ employees, loading, onEdit, onDelete, onOpen, permissio
         </table>
       </div>
       
-      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-        <p className="text-sm text-gray-500">
+      <div className="px-6 py-3 bg-slate-50 border-t border-slate-200">
+        <p className="text-sm text-slate-500">
           Showing {employees.length} employee{employees.length !== 1 ? "s" : ""}
         </p>
       </div>

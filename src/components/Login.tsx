@@ -24,29 +24,29 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950 flex items-center justify-center p-4">
+      <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl border border-white/40 w-full max-w-md p-8">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-3xl shadow-lg bg-primary-600 flex items-center justify-center">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">{APP_CONFIG.name}</h1>
-          <p className="text-gray-500 mt-1">{APP_CONFIG.companyName}</p>
+          <img
+            src="/logo.jpg"
+            alt={APP_CONFIG.companyName}
+            className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg object-cover ring-4 ring-primary-100"
+          />
+          <h1 className="text-2xl font-bold text-slate-900">{APP_CONFIG.name}</h1>
+          <p className="text-slate-500 mt-1">{APP_CONFIG.companyName}</p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-600 mb-2">
               Username
             </label>
             <input
@@ -61,7 +61,7 @@ function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-600 mb-2">
               Password
             </label>
             <input
@@ -77,7 +77,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-primary py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full btn-primary py-3 text-base tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -94,7 +94,7 @@ function Login() {
         </form>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-slate-500">
           <p>&copy; {new Date().getFullYear()} {APP_CONFIG.companyName}</p>
         </div>
       </div>

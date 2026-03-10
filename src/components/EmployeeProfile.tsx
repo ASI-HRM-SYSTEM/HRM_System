@@ -5,7 +5,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-shell";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
 import type { Employee, EmployeeBankAccount } from "../types/employee";
-import { APP_CONFIG } from "../config/appConfig";
+import EmployeeAvatar from "./EmployeeAvatar";
 
 interface EmployeeProfileProps {
   epfNumber: string;
@@ -25,6 +25,13 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
   const profileRef = useRef<HTMLDivElement>(null);
   const qrCodeRef = useRef<HTMLDivElement>(null);
 
+  const getFallbackAvatarEmoji = (gender?: string | null) => {
+    const normalized = (gender || "").trim().toLowerCase();
+    if (normalized === "male") return "👨";
+    if (normalized === "female") return "👩";
+    return "👤";
+  };
+
   useEffect(() => {
     loadEmployee();
   }, [epfNumber]);
@@ -41,6 +48,8 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         } catch {
           setImageUrl(null);
         }
+      } else {
+        setImageUrl(null);
       }
 
       // Load bank accounts
@@ -213,7 +222,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         <div class="header">
           ${imageUrl
         ? `<img src="${imageUrl}" class="photo" alt="Employee Photo">`
-        : `<div class="photo-placeholder">👤</div>`
+        : `<div class="photo-placeholder">${getFallbackAvatarEmoji(employee.gender)}</div>`
       }
           <div class="title-section">
             <h1>${employee.full_name}</h1>
@@ -309,7 +318,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         </div>
 
         <div class="footer">
-          <p class="company-name">${APP_CONFIG.companyName}</p>
+          <p class="company-name">New Lanka Clothing (Pvt) Ltd</p>
           <p>Generated on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
         </div>
       </body>
@@ -420,11 +429,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
                   className="w-32 h-32 rounded-xl object-cover border-4 border-white shadow-lg"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-xl bg-white/20 flex items-center justify-center border-4 border-white/30">
-                  <svg className="w-16 h-16 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
+                <EmployeeAvatar gender={employee.gender} size="xl" rounded="rounded-xl" className="border-4 border-white/30 bg-white/20 text-white" />
               )}
             </div>
 

@@ -32,3 +32,6 @@ src-tauri/target/
 *.db-journal
 *.sqlite
 *.sqlite3
+
+# Theme assets (temporary design references)
+Theam_temp/

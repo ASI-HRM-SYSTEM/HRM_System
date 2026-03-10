@@ -33,12 +33,15 @@ import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { listen } from "@tauri-apps/api/event";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, COMPANY_ID, firebaseConfig, isFirebaseConfigured } from "../config/firebase";
+import type { FirebaseAuthStatus } from "../models/AppAccess";
 
 // ─── TEMPORARY BYPASS ─────────────────────────────────────────────────────────
 // Set to `true` to skip the Google Sign-In gate entirely.
 // Firebase & Firestore sync remain active — only the auth wall is removed.
 // When switching back to the google-auth branch, set this to `false` or remove it.
 const BYPASS_GOOGLE_AUTH = false;
+const FIREBASE_ACCESS_CACHE_KEY = "firebase_access_cache_v1";
+const FIREBASE_DEVICE_SETUP_KEY = "firebase_device_setup_v1";
 
 // ─── Tauri detection ──────────────────────────────────────────────────────────
 // Tauri 2 always injects `window.__TAURI_INTERNALS__` into the WebView.
@@ -47,22 +50,13 @@ const isTauri = (): boolean =>
     typeof window !== "undefined" &&
     ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type FirebaseAuthStatus =
-    | "loading"         // checking auth / redirect state on startup
-    | "unconfigured"    // no .env — skip Firebase gate
-    | "unauthenticated" // not signed in
-    | "redirecting"     // opening system browser for OAuth
-    | "checking"        // signed in, verifying allowlist
-    | "allowed"         // signed in + allowlisted ✅
-    | "denied";         // signed in but NOT allowlisted ❌
-
 interface FirebaseAuthContextValue {
     status: FirebaseAuthStatus;
     firebaseUser: User | null;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
     error: string | null;
+    isOffline: boolean;
 }
 
 const FirebaseAuthContext = createContext<FirebaseAuthContextValue | null>(null);
@@ -74,7 +68,92 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     );
     const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== "undefined" ? !navigator.onLine : false);
     const redirectCheckDone = useRef(false);
+
+    const saveAllowCache = (user: User) => {
+        if (!user.email) return;
+        localStorage.setItem(FIREBASE_ACCESS_CACHE_KEY, JSON.stringify({
+            email: user.email,
+            verifiedAt: new Date().toISOString(),
+        }));
+    };
+
+    const getAllowCache = (): { email: string; verifiedAt: string } | null => {
+        try {
+            const raw = localStorage.getItem(FIREBASE_ACCESS_CACHE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw) as { email?: string; verifiedAt?: string };
+            if (!parsed.email || !parsed.verifiedAt) return null;
+            return { email: parsed.email, verifiedAt: parsed.verifiedAt };
+        } catch {
+            return null;
+        }
+    };
+
+    const clearAllowCache = () => {
+        localStorage.removeItem(FIREBASE_ACCESS_CACHE_KEY);
+    };
+
+    const markDeviceSetupComplete = (user: User) => {
+        localStorage.setItem(FIREBASE_DEVICE_SETUP_KEY, JSON.stringify({
+            email: user.email ?? "",
+            setupCompletedAt: new Date().toISOString(),
+        }));
+    };
+
+    const isDeviceSetupComplete = (): boolean => {
+        try {
+            const raw = localStorage.getItem(FIREBASE_DEVICE_SETUP_KEY);
+            if (!raw) return false;
+            const parsed = JSON.parse(raw) as { setupCompletedAt?: string };
+            return Boolean(parsed.setupCompletedAt);
+        } catch {
+            return false;
+        }
+    };
+
+    const clearDeviceSetup = () => {
+        localStorage.removeItem(FIREBASE_DEVICE_SETUP_KEY);
+    };
+
+    const allowOfflineFromCache = (fallbackEmail?: string | null): boolean => {
+        if (!isDeviceSetupComplete()) return false;
+        const cached = getAllowCache();
+        if (!cached) return false;
+        const email = fallbackEmail ?? cached.email;
+        setError(`Offline mode active. This device already completed first-time online setup${email ? ` for ${email}` : ""}. Firebase sync will resume when internet returns.`);
+        setStatus("allowed-offline");
+        return true;
+    };
+
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("offline", handleOffline);
+
+        return () => {
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isOffline) return;
+        if (status !== "allowed-offline") return;
+
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            handleSignedInUser(currentUser).catch((err) => {
+                console.error("[FirebaseAuth] Online revalidation failed:", err);
+            });
+            return;
+        }
+
+        setError("Internet connection restored. Cloud sync is available again.");
+    }, [isOffline, status]);
 
     // ── Allowlist check ───────────────────────────────────────────────────────
     const checkAllowlist = async (user: User): Promise<boolean> => {
@@ -94,6 +173,9 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
             return isAllowed;
         } catch (err: any) {
             console.error("[FirebaseAuth] Allowlist check error:", err.message || err);
+            if (!navigator.onLine) {
+                return allowOfflineFromCache(user.email);
+            }
             return true; // fail open so a Firestore config issue doesn't lock everyone out
         }
     };
@@ -101,12 +183,26 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     // ── Handle a successfully authenticated user ───────────────────────────────
     const handleSignedInUser = async (user: User) => {
         setFirebaseUser(user);
+
+        if (!navigator.onLine) {
+            if (allowOfflineFromCache(user.email)) {
+                return;
+            }
+            setStatus("unauthenticated");
+            setError("Internet connection is required for first-time setup on this device. Complete verification online once, then offline mode will be available.");
+            return;
+        }
+
         setStatus("checking");
         const allowed = await checkAllowlist(user);
         setStatus(allowed ? "allowed" : "denied");
         if (!allowed) {
+            clearAllowCache();
+            clearDeviceSetup();
             setError(`${user.email} is not authorized. Contact your administrator.`);
         } else {
+            saveAllowCache(user);
+            markDeviceSetupComplete(user);
             setError(null);
         }
     };
@@ -117,6 +213,18 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         if (!isFirebaseConfigured()) return;
 
         console.log("[FirebaseAuth] Setting up authentication... (Tauri:", isTauri(), ")");
+
+        if (!navigator.onLine) {
+            const cached = getAllowCache();
+            if (cached) {
+                setFirebaseUser(null);
+                setStatus("allowed-offline");
+                setError(`Offline mode active. First-time setup was already completed for ${cached.email}. Firebase sync will resume when internet returns.`);
+            } else {
+                setStatus("unauthenticated");
+                setError("No internet connection. Connect once to complete first-time setup, verification, and sync preparation.");
+            }
+        }
 
         // For browser: check if there's a pending redirect result from a previous
         // signInWithRedirect call (not used for Tauri, but kept for browser path).
@@ -138,12 +246,16 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
             console.log("[FirebaseAuth] Auth state changed. User:", user?.email || "none");
             if (!user) {
+                if (!navigator.onLine && allowOfflineFromCache()) {
+                    setFirebaseUser(null);
+                    return;
+                }
                 if (redirectCheckDone.current) {
                     setFirebaseUser(null);
                     setStatus("unauthenticated");
                 } else {
                     setTimeout(() => {
-                        setStatus(s => s === "loading" || s === "checking" ? "unauthenticated" : s);
+                        setStatus((s: FirebaseAuthStatus) => s === "loading" || s === "checking" ? "unauthenticated" : s);
                     }, 1000);
                 }
                 setError(null);
@@ -165,6 +277,13 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         console.log("[FirebaseAuth] Tauri path: starting local OAuth server...");
         setError(null);
         setStatus("redirecting");
+
+        if (!navigator.onLine) {
+            if (allowOfflineFromCache()) return;
+            setStatus("unauthenticated");
+            setError("Internet connection is required for first-time setup on this device.");
+            return;
+        }
 
         try {
             // 1. Start local TCP server and inject Firebase config into served auth page.
@@ -226,6 +345,12 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         console.log("[FirebaseAuth] Browser path: using signInWithPopup...");
         setError(null);
         setStatus("loading");
+        if (!navigator.onLine) {
+            if (allowOfflineFromCache()) return;
+            setStatus("unauthenticated");
+            setError("Internet connection is required for first-time setup on this device.");
+            return;
+        }
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: "select_account" });
@@ -254,10 +379,12 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(null);
         setStatus("unauthenticated");
         setError(null);
+        clearAllowCache();
+        clearDeviceSetup();
     };
 
     return (
-        <FirebaseAuthContext.Provider value={{ status, firebaseUser, signInWithGoogle, signOut, error }}>
+        <FirebaseAuthContext.Provider value={{ status, firebaseUser, signInWithGoogle, signOut, error, isOffline }}>
             {children}
         </FirebaseAuthContext.Provider>
     );

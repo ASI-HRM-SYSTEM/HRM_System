@@ -8,7 +8,7 @@ import { useFirebaseAuth } from "../context/FirebaseAuthContext";
 import { APP_CONFIG } from "../config/appConfig";
 
 function FirebaseLogin() {
-    const { status, firebaseUser, signInWithGoogle, signOut, error } = useFirebaseAuth();
+    const { status, firebaseUser, signInWithGoogle, signOut, error, isOffline } = useFirebaseAuth();
 
     // ── Loading spinner ───────────────────────────────────────────────────────
     if (status === "loading" || status === "checking" || status === "redirecting") {
@@ -60,6 +60,61 @@ function FirebaseLogin() {
         );
     }
 
+    // ── Offline first-run / offline info screen ──────────────────────────────
+    if (status === "unauthenticated" && isOffline) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
+                <div className="w-full max-w-lg rounded-2xl border p-8 text-center" style={{ backgroundColor: "rgba(15, 23, 42, 0.96)", borderColor: "rgba(148, 163, 184, 0.2)" }}>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-amber-500/15 text-amber-300">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404A5.5 5.5 0 1115.89 8.626M8.111 16.404L5 19.515M8.111 16.404l3.183-3.182m4.596-4.596L19 5.515" />
+                        </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-3">Offline Mode</h2>
+                    <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                        This device is currently offline. The app can work offline only after first-time setup is completed online on this device.
+                    </p>
+                    <div className="rounded-xl border p-4 mb-6 text-left" style={{ backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(148, 163, 184, 0.15)" }}>
+                        <p className="text-sm text-slate-200 font-medium mb-2">What to do</p>
+                        <ul className="text-xs text-slate-400 space-y-1.5 list-disc pl-4">
+                            <li>Connect to the internet for the first app setup.</li>
+                            <li>Sign in with your approved Google account.</li>
+                            <li>Let the app finish verification and sync preparation.</li>
+                            <li>After that, this device can continue working offline.</li>
+                        </ul>
+                    </div>
+                    {error && <p className="text-xs text-amber-300">{error}</p>}
+                </div>
+            </div>
+        );
+    }
+
+    if (status === "allowed-offline") {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
+                <div className="w-full max-w-lg rounded-2xl border p-8 text-center" style={{ backgroundColor: "rgba(15, 23, 42, 0.96)", borderColor: "rgba(148, 163, 184, 0.2)" }}>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-emerald-500/15 text-emerald-300">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m7 2A9 9 0 113 12a9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-3">Offline Access Ready</h2>
+                    <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                        First-time setup was completed earlier on this device, so the app can continue to open without internet.
+                    </p>
+                    <div className="rounded-xl border p-4 mb-6 text-left" style={{ backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(148, 163, 184, 0.15)" }}>
+                        <ul className="text-xs text-slate-400 space-y-1.5 list-disc pl-4">
+                            <li>Local HRM features continue working.</li>
+                            <li>Cloud verification is skipped until internet returns.</li>
+                            <li>Sync and updates resume automatically once online.</li>
+                        </ul>
+                    </div>
+                    <p className="text-xs text-emerald-300">{error || "Offline mode is active."}</p>
+                </div>
+            </div>
+        );
+    }
+
     // ── Sign-in screen ────────────────────────────────────────────────────────
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
@@ -85,9 +140,9 @@ function FirebaseLogin() {
 
                     {/* Error message */}
                     {error && (
-                        <div className="mb-4 p-4 bg-red-500/20 border border-red-400/30 rounded-xl">
-                            <p className="text-red-300 text-sm font-medium mb-2">{error}</p>
-                            {error.toLowerCase().includes("popup") && (
+                        <div className={`mb-4 p-4 rounded-xl border ${isOffline ? "bg-amber-500/15 border-amber-400/30" : "bg-red-500/20 border-red-400/30"}`}>
+                            <p className={`${isOffline ? "text-amber-200" : "text-red-300"} text-sm font-medium mb-2`}>{error}</p>
+                            {!isOffline && error.toLowerCase().includes("popup") && (
                                 <p className="text-red-200 text-xs opacity-80">
                                     💡 <strong>Tip:</strong> If using a browser, ensure popups are enabled. If using the desktop app, try clicking the button again.
                                 </p>
@@ -99,7 +154,7 @@ function FirebaseLogin() {
                     <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
                         <p className="text-gray-300 text-sm text-center leading-relaxed">
                             This system requires company authorization.<br />
-                            Sign in with your authorized Google account to continue.
+                            First-time setup must be done online. After successful sign-in and verification, this device can work offline later.
                         </p>
                     </div>
 

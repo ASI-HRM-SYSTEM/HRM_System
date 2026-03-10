@@ -35,7 +35,7 @@ function TermsAndConditions() {
           <section>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Current Contract Context</h3>
             <p className="text-gray-700 leading-relaxed mt-2">
-              The current implementation is being delivered for <strong>New Lanka Clothing</strong> under a contract engagement.
+              The current implementation is being delivered for <strong>{APP_CONFIG.companyName}</strong> under a contract engagement.
               This contract engagement does not reduce ASI Solution's independent rights to operate as a software vendor and service provider unless a separate exclusive agreement is signed.
             </p>
             <p className="text-gray-700 leading-relaxed mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -72,7 +72,7 @@ function TermsAndConditions() {
             </div>
           </section>
 
-          {/* Warranty Disclaimer */}
+          {/* Warranty */}
           <section>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">6. Warranty Disclaimer</h3>
             <p className="text-gray-700 leading-relaxed">

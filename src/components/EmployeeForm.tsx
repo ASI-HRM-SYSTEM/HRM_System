@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Employee, Bank, EmployeeBankAccount, EmployeeSaveError } from "../types/employee";
 import CustomDatePicker from "./CustomDatePicker";
+import EmployeeAvatar from "./EmployeeAvatar";
 
 interface EmployeeFormProps {
   employee: Employee | null;
@@ -157,7 +158,9 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
     if (typeof error !== "string") return null;
     try {
       const parsed = JSON.parse(error) as EmployeeSaveError;
-      if (parsed?.code && parsed?.message) return parsed;
+      if (parsed?.code && parsed?.message) {
+        return parsed;
+      }
       return null;
     } catch {
       return null;
@@ -225,7 +228,6 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
     if (!(formData.nic || "").trim()) newErrors.nic = "NIC Number is required";
     if (!formData.name_with_initials.trim()) newErrors.name_with_initials = "Name with initials is required";
     if (!formData.full_name.trim()) newErrors.full_name = "Full name is required";
-    if (!employee && !imageData) newErrors.image = "Employee photo is required";
     // Validate bank accounts
     bankAccounts.forEach((row, i) => {
       if (row.bank_id === "" && row.account_number.trim()) {
@@ -262,7 +264,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
 
         // Save bank accounts (after employee is saved via onSubmit)
         // We pass back via onSubmit then save bank accounts
-        await onSubmit(updatedFormData);
+  await onSubmit(updatedFormData);
 
         // Save bank accounts for this employee
         const validAccounts = bankAccounts.filter(a => a.bank_id !== "" && a.account_number.trim());
@@ -363,7 +365,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
       <form onSubmit={handleSubmit}>
         {/* Employee Photo Section */}
         <div className="mb-8 flex flex-col items-center">
-          <label className="label mb-2">Employee Photo *</label>
+          <label className="label mb-2">Employee Photo (Optional)</label>
           <div className="relative">
             {imagePreview ? (
               <div className="relative">
@@ -375,9 +377,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-40 h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-gray-50 transition-colors ${errors.image ? "border-red-500" : "border-gray-300"}`}
               >
-                <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <EmployeeAvatar gender={formData.gender} size="lg" rounded="rounded-lg" className="mb-2 border-0" />
                 <span className="text-sm text-gray-500">Click to upload</span>
               </div>
             )}
@@ -387,6 +387,11 @@ function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, department
             <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-2 text-sm text-primary-600 hover:text-primary-800">
               Change photo
             </button>
+          )}
+          {!imagePreview && !errors.image && (
+            <p className="text-sm mt-2" style={{ color: "var(--text-tertiary)" }}>
+              Photo upload is optional. You can register the employee without it.
+            </p>
           )}
           {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
         </div>

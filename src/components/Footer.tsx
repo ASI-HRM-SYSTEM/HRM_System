@@ -8,8 +8,8 @@ function Footer() {
   };
 
   return (
-    <footer className="bg-white border-t border-gray-200 py-3 px-6">
-      <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
+    <footer className="bg-slate-50/80 border-t border-slate-200 py-3 px-6 backdrop-blur-sm">
+      <div className="flex items-center justify-center gap-1 text-sm text-slate-500">
         <span>Developed by</span>
         <button
           onClick={handleClick}

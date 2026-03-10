@@ -35,7 +35,18 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: HRM System v${{ steps.get_version.outputs.version }}
-          body_path: ./RELEASE_NOTES_v${{ steps.get_version.outputs.version }}.md
+          body: |
+            ## HRM System v${{ steps.get_version.outputs.version }}
+
+            Production release for New Lanka Clothing (Pvt) Ltd.
+
+            ### Included
+            - Desktop app bundles for Windows and Linux
+            - Auto-update metadata (`latest.json`)
+
+            ### Notes
+            - Release documentation files are intentionally excluded in production repositories.
+            - See commit history for detailed change tracking.
           draft: false
           prerelease: false
         env:
@@ -96,12 +107,61 @@ jobs:
           echo "VITE_FB_APP_ID=${{ secrets.VITE_FB_APP_ID }}" >> .env
           echo "VITE_FB_COMPANY_ID=${{ secrets.VITE_FB_COMPANY_ID }}" >> .env
 
+      - name: Prepare Tauri signing key
+        shell: bash
+        env:
+          RAW_SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          RAW_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RAW_SIGNING_KEY:-}" ]; then
+            echo "Error: TAURI_SIGNING_PRIVATE_KEY is empty or missing."
+            exit 1
+          fi
+
+          normalize_key() {
+            printf '%b' "$1" | tr -d '\r'
+          }
+
+          looks_like_minisign_secret() {
+            local key="$1"
+            printf '%s' "$key" | grep -q '^untrusted comment: .*secret key'
+          }
+
+          KEY_NORMALIZED="$(normalize_key "$RAW_SIGNING_KEY")"
+
+          if looks_like_minisign_secret "$KEY_NORMALIZED"; then
+            KEY_BASE64="$(printf '%s' "$KEY_NORMALIZED" | base64 | tr -d '\r\n')"
+          else
+            KEY_BASE64="$(printf '%s' "$RAW_SIGNING_KEY" | tr -d ' \t\r\n')"
+          fi
+
+          KEY_DECODED="$(printf '%s' "$KEY_BASE64" | base64 --decode 2>/dev/null || true)"
+          KEY_DECODED="$(normalize_key "$KEY_DECODED")"
+
+          if ! looks_like_minisign_secret "$KEY_DECODED"; then
+            echo "Error: TAURI_SIGNING_PRIVATE_KEY is not a valid minisign secret key."
+            echo "Expected first line like: untrusted comment: minisign encrypted secret key"
+            echo "Tip: paste the full key file contents (with real newlines) or a clean base64 string."
+            exit 1
+          fi
+
+          PASSWORD_VALUE="${RAW_SIGNING_PASSWORD:-}"
+          if [ -n "$PASSWORD_VALUE" ] && [ -z "$(printf '%s' "$PASSWORD_VALUE" | tr -d '[:space:]')" ]; then
+            PASSWORD_VALUE=""
+          fi
+
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_BASE64"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PATH="
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$PASSWORD_VALUE"
+          } >> "$GITHUB_ENV"
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
