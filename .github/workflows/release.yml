@@ -61,11 +61,9 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            args: ''
-            target: ''
+            args: '--bundles appimage'
           - platform: windows-latest
-            args: ''
-            target: ''
+            args: '--bundles nsis,msi'
 
     runs-on: ${{ matrix.platform }}
 
