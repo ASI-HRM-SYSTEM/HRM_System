@@ -1,18 +1,10 @@
-# HRM System - New Lanka Clothing
+# HRM System Template
 
-A cross-platform desktop HR Management system for garment factories built with Tauri, React, and SQLite.
+A cross-platform desktop HR management template built with Tauri, React, and SQLite. This repository is the generic/open-source base and is intended to be customized with your own branding, company details, and release settings.
 
-## 📥 Download
+## 📥 Releases
 
-Download the latest version for your operating system:
-
-| Platform | Download |
-|----------|----------|
-| **Windows** | [Download .msi installer](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/HRM-System_1.0.0_x64-setup.msi) |
-| **Linux (Debian/Ubuntu)** | [Download .deb package](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/hrm-system_1.0.0_amd64.deb) |
-| **Linux (AppImage)** | [Download .AppImage](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases/latest/download/hrm-system_1.0.0_amd64.AppImage) |
-
-Or visit the [Releases Page](https://github.com/AsithaKanchana1/Newlanka_HRM_System/releases) to see all versions.
+Build and publish your own branded releases from this template. Update the repository links, app branding, updater keys, and GitHub Actions secrets before distributing installers.
 
 ### Installation Instructions
 
@@ -43,11 +35,18 @@ chmod +x hrm-system_1.0.0_amd64.AppImage
 ## Features
 
 - 👥 **Employee Management**: Add, edit, delete, and search employees
+- 🛡️ **Identifier Validation**: EPF Number and NIC Number are required and duplicate values are blocked
 - 📊 **Dashboard**: Overview of employee statistics
-- 🔍 **Advanced Filters**: Filter by EPF Number, Department, Transport Route, and Working Status
+- 🔍 **Advanced Filters**: Search employees by EPF, NIC, name, phone, department, designation, route, address, and more
 - 💾 **Local Database**: SQLite database stored locally
 - 🔄 **Auto-Update**: Automatic updates from GitHub Releases
 - 🖥️ **Cross-Platform**: Works on Windows and Linux
+
+## Branding Notes
+
+- Replace placeholder values in [src/config/appConfig.ts](src/config/appConfig.ts)
+- Replace or customize the generic template branding in the login screen, sidebar, exported reports, and PDFs
+- Add your own logo asset if you want image-based branding instead of the default generic icon blocks
 
 ## 🛠️ Development Setup
 
@@ -74,8 +73,8 @@ sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchel
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/AsithaKanchana1/Newlanka_HRM_System.git
-   cd Newlanka_HRM_System
+   git clone <your-repository-url>
+   cd HRM_System
    ```
 
 2. **Install dependencies**
@@ -165,4 +164,4 @@ The SQLite database stores employee information with the following fields:
 
 ## License
 
-MIT License - See LICENSE file for details
+Use the license that matches your project. Review all placeholder legal text before publishing a customized build.

@@ -7,6 +7,7 @@ import type { Employee } from "../types/employee";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-shell";
+import { APP_CONFIG } from "../config/appConfig";
 
 // Re-export for convenience
 export type ExportFormat = 'excel' | 'csv' | 'pdf';
@@ -256,7 +257,7 @@ export class ExportService {
       </head>
       <body>
         <div class="header">
-          <h1>New Lanka Clothing (Pvt) Ltd</h1>
+          <h1>${APP_CONFIG.companyName}</h1>
           <p>${title} - Generated on ${new Date().toLocaleDateString('en-GB', { 
             day: '2-digit', month: 'long', year: 'numeric' 
           })}</p>
@@ -278,7 +279,7 @@ export class ExportService {
           </tbody>
         </table>
         <div class="footer">
-          <p>HRM System - New Lanka Clothing (Pvt) Ltd</p>
+          <p>${APP_CONFIG.name} - ${APP_CONFIG.companyName}</p>
         </div>
       </body>
       </html>

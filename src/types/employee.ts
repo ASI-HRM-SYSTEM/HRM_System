@@ -22,6 +22,13 @@ export interface Employee {
   created_at?: string;
 }
 
+export interface EmployeeSaveError {
+  code: string;
+  field?: "epf_number" | "nic";
+  message: string;
+  employee?: Employee;
+}
+
 export interface Bank {
   id: number;
   name: string;

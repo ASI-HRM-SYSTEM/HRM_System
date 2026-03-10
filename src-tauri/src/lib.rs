@@ -116,6 +116,18 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     // Add missing permission columns to users table if they don't exist (for existing databases)
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0", []);
 
+    let _ = conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_epf_unique_normalized
+         ON employees (UPPER(TRIM(epf_number)))",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_nic_unique_normalized
+         ON employees (UPPER(TRIM(nic)))
+         WHERE nic IS NOT NULL AND TRIM(nic) <> ''",
+        [],
+    );
+
     // Create banks table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS banks (

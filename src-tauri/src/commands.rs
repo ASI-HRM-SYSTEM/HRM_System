@@ -5,9 +5,170 @@ use crate::models::{
 };
 use crate::{AppDataDir, CurrentUser, DbConnection};
 use base64::{engine::general_purpose, Engine as _};
+use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use tauri::State;
+
+#[derive(Debug, Serialize)]
+struct EmployeeSaveError {
+    code: String,
+    field: Option<String>,
+    message: String,
+    employee: Option<Employee>,
+}
+
+fn employee_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Employee> {
+    Ok(Employee {
+        epf_number: row.get(0)?,
+        name_with_initials: row.get(1)?,
+        full_name: row.get(2)?,
+        dob: row.get(3)?,
+        police_area: row.get(4)?,
+        transport_route: row.get(5)?,
+        mobile_1: row.get(6)?,
+        mobile_2: row.get(7)?,
+        address: row.get(8)?,
+        date_of_join: row.get(9)?,
+        date_of_resign: row.get(10)?,
+        working_status: row.get(11)?,
+        marital_status: row.get(12)?,
+        cader: row.get(13)?,
+        designation: row.get(14)?,
+        allocation: row.get(15)?,
+        department: row.get(16)?,
+        image_path: row.get(17)?,
+        nic: row.get(18)?,
+        gender: row.get(19)?,
+        created_at: row.get(20)?,
+    })
+}
+
+fn serialize_employee_save_error(
+    code: &str,
+    field: Option<&str>,
+    message: impl Into<String>,
+    employee: Option<Employee>,
+) -> String {
+    serde_json::to_string(&EmployeeSaveError {
+        code: code.to_string(),
+        field: field.map(|value| value.to_string()),
+        message: message.into(),
+        employee,
+    })
+    .unwrap_or_else(|_| "Employee save failed".to_string())
+}
+
+fn normalize_required(value: &str) -> String {
+    value.trim().to_string()
+}
+
+fn normalize_optional(value: &Option<String>) -> Option<String> {
+    value
+        .as_ref()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+}
+
+fn sanitize_employee(mut employee: Employee) -> Employee {
+    employee.epf_number = normalize_required(&employee.epf_number);
+    employee.name_with_initials = normalize_required(&employee.name_with_initials);
+    employee.full_name = normalize_required(&employee.full_name);
+    employee.police_area = normalize_optional(&employee.police_area);
+    employee.transport_route = normalize_optional(&employee.transport_route);
+    employee.mobile_1 = normalize_optional(&employee.mobile_1);
+    employee.mobile_2 = normalize_optional(&employee.mobile_2);
+    employee.address = normalize_optional(&employee.address);
+    employee.marital_status = normalize_optional(&employee.marital_status);
+    employee.cader = normalize_optional(&employee.cader);
+    employee.designation = normalize_optional(&employee.designation);
+    employee.allocation = normalize_optional(&employee.allocation);
+    employee.department = normalize_optional(&employee.department);
+    employee.image_path = normalize_optional(&employee.image_path);
+    employee.nic = normalize_optional(&employee.nic);
+    employee.gender = normalize_optional(&employee.gender);
+    employee
+}
+
+fn find_conflicting_employee(
+    conn: &rusqlite::Connection,
+    column_name: &str,
+    value: &str,
+    exclude_epf: Option<&str>,
+) -> Result<Option<Employee>, String> {
+    let mut sql = format!(
+        "SELECT epf_number, name_with_initials, full_name, dob, police_area, 
+                transport_route, mobile_1, mobile_2, address, date_of_join, 
+                date_of_resign, working_status, marital_status, cader,
+                designation, allocation, department, image_path,
+                nic, gender, created_at 
+         FROM employees
+         WHERE UPPER(TRIM({})) = UPPER(TRIM(?1))",
+        column_name
+    );
+
+    if exclude_epf.is_some() {
+        sql.push_str(" AND epf_number <> ?2");
+    }
+
+    let result = if let Some(exclude_epf) = exclude_epf {
+        conn.query_row(&sql, rusqlite::params![value, exclude_epf], employee_from_row)
+    } else {
+        conn.query_row(&sql, rusqlite::params![value], employee_from_row)
+    };
+
+    match result {
+        Ok(employee) => Ok(Some(employee)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn validate_employee_for_save(
+    conn: &rusqlite::Connection,
+    employee: &Employee,
+    exclude_epf: Option<&str>,
+) -> Result<(), String> {
+    if employee.epf_number.is_empty() {
+        return Err(serialize_employee_save_error(
+            "VALIDATION_ERROR",
+            Some("epf_number"),
+            "EPF Number cannot be empty.",
+            None,
+        ));
+    }
+
+    if employee.nic.as_deref().unwrap_or("").is_empty() {
+        return Err(serialize_employee_save_error(
+            "VALIDATION_ERROR",
+            Some("nic"),
+            "NIC Number cannot be empty.",
+            None,
+        ));
+    }
+
+    if let Some(conflict) = find_conflicting_employee(conn, "epf_number", &employee.epf_number, exclude_epf)? {
+        return Err(serialize_employee_save_error(
+            "DUPLICATE_EMPLOYEE_FIELD",
+            Some("epf_number"),
+            format!("EPF Number '{}' already exists.", employee.epf_number),
+            Some(conflict),
+        ));
+    }
+
+    if let Some(nic) = employee.nic.as_deref() {
+        if let Some(conflict) = find_conflicting_employee(conn, "nic", nic, exclude_epf)? {
+            return Err(serialize_employee_save_error(
+                "DUPLICATE_EMPLOYEE_FIELD",
+                Some("nic"),
+                format!("NIC Number '{}' already exists.", nic),
+                Some(conflict),
+            ));
+        }
+    }
+
+    Ok(())
+}
 
 #[tauri::command]
 pub fn init_database() -> Result<(), String> {
@@ -33,8 +194,26 @@ pub fn get_employees(
     let mut params: Vec<String> = Vec::new();
 
     if !filters.epf_number.is_empty() {
-        sql.push_str(" AND epf_number LIKE ?");
-        params.push(format!("%{}%", filters.epf_number));
+        sql.push_str(
+            " AND (
+                epf_number LIKE ? OR
+                name_with_initials LIKE ? OR
+                full_name LIKE ? OR
+                IFNULL(nic, '') LIKE ? OR
+                IFNULL(mobile_1, '') LIKE ? OR
+                IFNULL(mobile_2, '') LIKE ? OR
+                IFNULL(address, '') LIKE ? OR
+                IFNULL(department, '') LIKE ? OR
+                IFNULL(designation, '') LIKE ? OR
+                IFNULL(allocation, '') LIKE ? OR
+                IFNULL(transport_route, '') LIKE ? OR
+                IFNULL(police_area, '') LIKE ?
+            )",
+        );
+        let search_term = format!("%{}%", filters.epf_number.trim());
+        for _ in 0..12 {
+            params.push(search_term.clone());
+        }
     }
     if !filters.department.is_empty() {
         sql.push_str(" AND department = ?");
@@ -104,31 +283,7 @@ pub fn get_employee_by_epf(
                 nic, gender, created_at 
          FROM employees WHERE epf_number = ?1",
         [&epf_number],
-        |row| {
-            Ok(Employee {
-                epf_number: row.get(0)?,
-                name_with_initials: row.get(1)?,
-                full_name: row.get(2)?,
-                dob: row.get(3)?,
-                police_area: row.get(4)?,
-                transport_route: row.get(5)?,
-                mobile_1: row.get(6)?,
-                mobile_2: row.get(7)?,
-                address: row.get(8)?,
-                date_of_join: row.get(9)?,
-                date_of_resign: row.get(10)?,
-                working_status: row.get(11)?,
-                marital_status: row.get(12)?,
-                cader: row.get(13)?,
-                designation: row.get(14)?,
-                allocation: row.get(15)?,
-                department: row.get(16)?,
-                image_path: row.get(17)?,
-                nic: row.get(18)?,
-                gender: row.get(19)?,
-                created_at: row.get(20)?,
-            })
-        },
+        employee_from_row,
     )
     .map_err(|e| format!("Employee not found: {}", e))
 }
@@ -139,7 +294,10 @@ pub fn create_employee(
     db: State<'_, DbConnection>,
     current_user: State<'_, CurrentUser>,
 ) -> Result<(), String> {
+    let employee = sanitize_employee(employee);
     let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    validate_employee_for_save(&conn, &employee, None)?;
 
     conn.execute(
         "INSERT INTO employees (
@@ -206,7 +364,10 @@ pub fn update_employee(
     db: State<'_, DbConnection>,
     current_user: State<'_, CurrentUser>,
 ) -> Result<(), String> {
+    let employee = sanitize_employee(employee);
     let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    validate_employee_for_save(&conn, &employee, Some(&employee.epf_number))?;
 
     // Get old employee data for audit log
     let old_employee: Option<Employee> = conn
@@ -218,31 +379,7 @@ pub fn update_employee(
                 nic, gender, created_at 
          FROM employees WHERE epf_number = ?1",
             [&employee.epf_number],
-            |row| {
-                Ok(Employee {
-                    epf_number: row.get(0)?,
-                    name_with_initials: row.get(1)?,
-                    full_name: row.get(2)?,
-                    dob: row.get(3)?,
-                    police_area: row.get(4)?,
-                    transport_route: row.get(5)?,
-                    mobile_1: row.get(6)?,
-                    mobile_2: row.get(7)?,
-                    address: row.get(8)?,
-                    date_of_join: row.get(9)?,
-                    date_of_resign: row.get(10)?,
-                    working_status: row.get(11)?,
-                    marital_status: row.get(12)?,
-                    cader: row.get(13)?,
-                    designation: row.get(14)?,
-                    allocation: row.get(15)?,
-                    department: row.get(16)?,
-                    image_path: row.get(17)?,
-                    nic: row.get(18)?,
-                    gender: row.get(19)?,
-                    created_at: row.get(20)?,
-                })
-            },
+            employee_from_row,
         )
         .ok();
 

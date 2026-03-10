@@ -5,6 +5,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-shell";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
 import type { Employee, EmployeeBankAccount } from "../types/employee";
+import { APP_CONFIG } from "../config/appConfig";
 
 interface EmployeeProfileProps {
   epfNumber: string;
@@ -308,7 +309,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
         </div>
 
         <div class="footer">
-          <p class="company-name">New Lanka Clothing (Pvt) Ltd</p>
+          <p class="company-name">${APP_CONFIG.companyName}</p>
           <p>Generated on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
         </div>
       </body>

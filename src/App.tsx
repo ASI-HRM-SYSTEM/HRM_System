@@ -17,6 +17,59 @@ import FirebaseLogin from "./components/FirebaseLogin";
 import About from "./components/About";
 import TermsAndConditions from "./components/TermsAndConditions";
 
+const TERMS_ACCEPTANCE_KEY = "hrm_terms_accepted_v2";
+
+function UserAgreementGate() {
+  const [showFullTerms, setShowFullTerms] = useState(false);
+
+  if (showFullTerms) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 border-b bg-white flex justify-between items-center">
+          <h1 className="text-lg font-semibold text-gray-800">User Agreement (Mandatory)</h1>
+          <button className="btn-secondary" onClick={() => setShowFullTerms(false)}>
+            Back
+          </button>
+        </div>
+        <TermsAndConditions />
+      </div>
+    );
+  }
+
+  const acceptAndContinue = () => {
+    localStorage.setItem(TERMS_ACCEPTANCE_KEY, new Date().toISOString());
+    window.location.reload();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-3">User Agreement Required</h1>
+        <p className="text-gray-700 mb-4">
+          You must read and accept the Terms & Conditions before using this software.
+          Acceptance is mandatory for first-time access.
+        </p>
+
+        <div className="p-4 rounded-lg border border-red-300 bg-red-50 mb-6">
+          <p className="text-red-700 font-semibold">
+            IMPORTANT NOTICE: Hosting, backend operations, software updates, maintenance,
+            and support are paid services. Rates are market-dependent and may change over time.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button className="btn-secondary" onClick={() => setShowFullTerms(true)}>
+            Read Full Terms
+          </button>
+          <button className="btn-primary" onClick={acceptAndContinue}>
+            I Agree & Continue to Login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
@@ -71,6 +124,10 @@ function AppContent() {
 
   // Show login if not authenticated
   if (!user) {
+    const hasAcceptedTerms = !!localStorage.getItem(TERMS_ACCEPTANCE_KEY);
+    if (!hasAcceptedTerms) {
+      return <UserAgreementGate />;
+    }
     return <Login />;
   }
 

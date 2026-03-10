@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Employee, Bank, EmployeeBankAccount } from "../types/employee";
+import type { Employee, Bank, EmployeeBankAccount, EmployeeSaveError } from "../types/employee";
 import CustomDatePicker from "./CustomDatePicker";
 
 interface EmployeeFormProps {
   employee: Employee | null;
-  onSubmit: (employee: Employee) => void;
+  onSubmit: (employee: Employee) => Promise<void>;
   onCancel: () => void;
+  onViewEmployee?: (epfNumber: string) => void;
   departments: string[];
   transportRoutes: string[];
   policeAreas: string[];
@@ -46,9 +47,11 @@ interface BankAccountRow {
   account_number: string;
 }
 
-function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRoutes, policeAreas, designations, allocations }: EmployeeFormProps) {
+function EmployeeForm({ employee, onSubmit, onCancel, onViewEmployee, departments, transportRoutes, policeAreas, designations, allocations }: EmployeeFormProps) {
   const [formData, setFormData] = useState<Employee>(emptyEmployee);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>("");
+  const [conflictError, setConflictError] = useState<EmployeeSaveError | null>(null);
   const [newDepartment, setNewDepartment] = useState("");
   const [newRoute, setNewRoute] = useState("");
   const [newPoliceArea, setNewPoliceArea] = useState("");
@@ -94,6 +97,8 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
   useEffect(() => {
     if (employee) {
       setFormData(employee);
+      setSubmitError("");
+      setConflictError(null);
       // Load existing image if available
       if (employee.image_path) {
         loadEmployeeImage(employee.image_path);
@@ -105,6 +110,8 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
       loadBankAccounts(employee.epf_number);
     } else {
       setFormData(emptyEmployee);
+      setSubmitError("");
+      setConflictError(null);
       setImagePreview(null);
       setImageData(null);
       setBankAccounts([]);
@@ -139,8 +146,21 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
   const handleChange = (field: keyof Employee, value: string | null) => {
     setFormData((prev) => ({ ...prev, [field]: value || null }));
+    if (submitError) setSubmitError("");
+    if (conflictError) setConflictError(null);
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const parseSaveError = (error: unknown): EmployeeSaveError | null => {
+    if (typeof error !== "string") return null;
+    try {
+      const parsed = JSON.parse(error) as EmployeeSaveError;
+      if (parsed?.code && parsed?.message) return parsed;
+      return null;
+    } catch {
+      return null;
     }
   };
 
@@ -202,6 +222,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.epf_number.trim()) newErrors.epf_number = "EPF Number is required";
+    if (!(formData.nic || "").trim()) newErrors.nic = "NIC Number is required";
     if (!formData.name_with_initials.trim()) newErrors.name_with_initials = "Name with initials is required";
     if (!formData.full_name.trim()) newErrors.full_name = "Full name is required";
     if (!employee && !imageData) newErrors.image = "Employee photo is required";
@@ -220,9 +241,15 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
+    setConflictError(null);
     if (validate()) {
       try {
         let updatedFormData = { ...formData };
+        updatedFormData.epf_number = updatedFormData.epf_number.trim();
+        updatedFormData.name_with_initials = updatedFormData.name_with_initials.trim();
+        updatedFormData.full_name = updatedFormData.full_name.trim();
+        updatedFormData.nic = (updatedFormData.nic || "").trim() || null;
 
         // Save image if new image data exists
         if (imageData) {
@@ -235,7 +262,7 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
         // Save bank accounts (after employee is saved via onSubmit)
         // We pass back via onSubmit then save bank accounts
-        onSubmit(updatedFormData);
+        await onSubmit(updatedFormData);
 
         // Save bank accounts for this employee
         const validAccounts = bankAccounts.filter(a => a.bank_id !== "" && a.account_number.trim());
@@ -245,7 +272,17 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
         });
       } catch (error) {
         console.error("Failed to save:", error);
-        alert("Failed to save employee: " + error);
+        const parsedError = parseSaveError(error);
+        if (parsedError) {
+          setSubmitError(parsedError.message);
+          setConflictError(parsedError.employee ? parsedError : null);
+          if (parsedError.field) {
+            setErrors((prev) => ({ ...prev, [parsedError.field!]: parsedError.message }));
+          }
+          return;
+        }
+
+        setSubmitError(`Failed to save employee: ${error}`);
       }
     }
   };
@@ -296,6 +333,32 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
         {employee ? "Edit Employee" : "Add New Employee"}
       </h2>
+
+      {submitError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-medium">{submitError}</p>
+          {conflictError?.employee && (
+            <div className="mt-3 rounded-md border border-red-200 bg-white p-3 text-gray-700">
+              <p className="text-sm font-semibold text-gray-800">Existing employee already in the system</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                <p><span className="font-medium">EPF:</span> {conflictError.employee.epf_number}</p>
+                <p><span className="font-medium">NIC:</span> {conflictError.employee.nic || "-"}</p>
+                <p><span className="font-medium">Name:</span> {conflictError.employee.full_name}</p>
+                <p><span className="font-medium">Department:</span> {conflictError.employee.department || "-"}</p>
+              </div>
+              {onViewEmployee && (
+                <button
+                  type="button"
+                  onClick={() => onViewEmployee(conflictError.employee!.epf_number)}
+                  className="mt-3 btn-secondary"
+                >
+                  View Current Employee Data
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         {/* Employee Photo Section */}
@@ -352,8 +415,9 @@ function EmployeeForm({ employee, onSubmit, onCancel, departments, transportRout
 
           {/* NIC */}
           <div>
-            <label className="label">NIC Number</label>
-            <input type="text" className="input-field" value={formData.nic || ""} onChange={(e) => handleChange("nic", e.target.value)} placeholder="e.g., 901234567V or 199012345678" />
+            <label className="label">NIC Number *</label>
+            <input type="text" className={`input-field ${errors.nic ? "border-red-500" : ""}`} value={formData.nic || ""} onChange={(e) => handleChange("nic", e.target.value)} placeholder="e.g., 901234567V or 199012345678" />
+            {errors.nic && <p className="text-red-500 text-sm mt-1">{errors.nic}</p>}
           </div>
 
           {/* Gender */}

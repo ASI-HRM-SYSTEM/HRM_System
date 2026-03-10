@@ -10,81 +10,66 @@ function TermsAndConditions() {
         </p>
 
         <div className="prose prose-gray max-w-none space-y-6 text-sm md:text-base">
-          {/* Software Usage Agreement */}
+          {/* Legal Ownership */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Software Usage Agreement</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Legal Ownership & Commercial Rights</h3>
             <p className="text-gray-700 leading-relaxed">
-              This software ("{APP_CONFIG.name}" v{APP_CONFIG.version}) is developed specifically for{" "}
-              <strong>{APP_CONFIG.companyName}</strong> to manage employee records, HR operations, and related administrative tasks.
+              This software ("{APP_CONFIG.name}" v{APP_CONFIG.version}) is developed and maintained by{" "}
+              <strong>ASI Solution</strong>. The owner of ASI Solution, <strong>{APP_CONFIG.developerName}</strong>,
+              retains full rights to develop, distribute, license, sell, and commercially support this software.
             </p>
           </section>
 
-          {/* Ownership & Copyright */}
+          {/* Copyright */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">2. Ownership & Copyright</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">2. Copyright & Intellectual Property</h3>
             <p className="text-gray-700 leading-relaxed mb-2">
-              © {new Date().getFullYear()} {APP_CONFIG.companyName}. All rights reserved.
+              © {new Date().getFullYear()} ASI Solution. All rights reserved.
             </p>
             <p className="text-gray-700 leading-relaxed">
-              This software and its source code are the property of {APP_CONFIG.companyName}. 
-              The company retains all intellectual property rights to the application, its design, 
-              features, and functionality.
+              The software architecture, codebase, deployment model, update model, and related service design are owned by ASI Solution unless explicitly transferred by a separate written agreement signed by both parties.
             </p>
           </section>
 
-          {/* Developer Rights */}
+          {/* Contract Context */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Developer Rights</h3>
-            <p className="text-gray-700 leading-relaxed">
-              Developed by: <strong>{APP_CONFIG.developerName}</strong>
-            </p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Current Contract Context</h3>
             <p className="text-gray-700 leading-relaxed mt-2">
-              Unless a stricter written agreement is introduced, the developer ({APP_CONFIG.developerName}) 
-              is permitted to use the source code for personal, educational, or portfolio purposes. 
-              This includes the right to:
+              The current implementation is being delivered for <strong>New Lanka Clothing</strong> under a contract engagement.
+              This contract engagement does not reduce ASI Solution's independent rights to operate as a software vendor and service provider unless a separate exclusive agreement is signed.
             </p>
-            <ul className="list-disc pl-6 mt-2 space-y-1 text-gray-700">
-              <li>Showcase the project as part of a professional portfolio</li>
-              <li>Reference the codebase for learning and personal development</li>
-              <li>Reuse architectural patterns and code snippets in other personal projects</li>
-              <li>Modify and adapt the code for non-commercial personal use</li>
-            </ul>
             <p className="text-gray-700 leading-relaxed mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <strong>Important:</strong> The developer may NOT distribute, sell, or deploy this exact 
-              application or its derivatives for commercial purposes without explicit written permission 
-              from {APP_CONFIG.companyName}.
+              <strong>Important:</strong> Any future feature requests, maintenance, upgrades, integrations,
+              bug fixes, infrastructure work, or support requests after resignation/exit of the developer from company employment must be handled as paid professional services under ASI Solution.
             </p>
           </section>
 
-          {/* Permitted Use */}
+          {/* Distribution Data Policy */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">4. Permitted Use</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">4. Distribution & Client Data Separation</h3>
             <p className="text-gray-700 leading-relaxed">
-              This software is licensed for use exclusively by authorized personnel of{" "}
-              {APP_CONFIG.companyName}. Users must:
+              ASI Solution may distribute and sell software releases built from this platform. Such distributions are not intended to include private company datasets. Client personal/company operational data remains separate from distribution artifacts.
             </p>
             <ul className="list-disc pl-6 mt-2 space-y-1 text-gray-700">
-              <li>Have proper authorization and valid credentials to access the system</li>
-              <li>Use the software solely for legitimate business purposes</li>
-              <li>Maintain the confidentiality of employee data and company information</li>
-              <li>Not attempt to reverse engineer, decompile, or extract the source code</li>
-              <li>Not redistribute, sublicense, or share the application without authorization</li>
+              <li>Client-specific data is not to be bundled in public/commercial distributions.</li>
+              <li>Each client deployment should use its own controlled environment and data boundaries.</li>
+              <li>Unauthorized extraction or misuse of private employee data is prohibited.</li>
             </ul>
           </section>
 
-          {/* Data Privacy & Security */}
+          {/* Support & Maintenance Charges */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">5. Data Privacy & Security</h3>
-            <p className="text-gray-700 leading-relaxed">
-              All employee data processed by this system is confidential and must be handled in accordance 
-              with applicable data protection laws and company policies. Users are responsible for:
-            </p>
-            <ul className="list-disc pl-6 mt-2 space-y-1 text-gray-700">
-              <li>Protecting login credentials and not sharing them with unauthorized individuals</li>
-              <li>Logging out when leaving the workstation unattended</li>
-              <li>Reporting any security incidents or data breaches immediately</li>
-              <li>Using strong passwords and changing them periodically</li>
-            </ul>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">5. Hosting, Backend, Updates & Maintenance Fees</h3>
+            <div className="p-4 rounded-lg border border-red-300 bg-red-50">
+              <p className="text-red-700 font-semibold">
+                IMPORTANT PAYMENT NOTICE: Hosting, backend infrastructure, security operations, software updates,
+                support, and maintenance are chargeable services and require ongoing payments to ASI Solution.
+              </p>
+              <p className="text-red-700 mt-2">
+                Service rates are market-dependent and variable (including inflation, exchange rates, infra/provider costs, and scope changes).
+                Rates are not fixed for lifetime unless explicitly agreed in a separate written contract.
+              </p>
+            </div>
           </section>
 
           {/* Warranty Disclaimer */}
@@ -93,7 +78,7 @@ function TermsAndConditions() {
             <p className="text-gray-700 leading-relaxed">
               This software is provided "AS IS" without warranty of any kind, either express or implied, 
               including but not limited to warranties of merchantability, fitness for a particular purpose, 
-              or non-infringement. The developer and {APP_CONFIG.companyName} shall not be liable for any 
+              or non-infringement. ASI Solution and the developer shall not be liable for any 
               damages arising from the use or inability to use this software.
             </p>
           </section>
@@ -102,7 +87,7 @@ function TermsAndConditions() {
           <section>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">7. Limitation of Liability</h3>
             <p className="text-gray-700 leading-relaxed">
-              In no event shall {APP_CONFIG.companyName} or the developer be liable for any indirect, 
+              In no event shall ASI Solution or the developer be liable for any indirect, 
               incidental, special, consequential, or punitive damages, including without limitation loss 
               of profits, data, or use, arising out of or in connection with the use of this software.
             </p>
@@ -112,19 +97,19 @@ function TermsAndConditions() {
           <section>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">8. Modifications & Updates</h3>
             <p className="text-gray-700 leading-relaxed">
-              {APP_CONFIG.companyName} reserves the right to modify, update, or discontinue any feature 
+              ASI Solution reserves the right to modify, update, or discontinue any feature 
               of this software at any time without prior notice. Users will be notified of major updates 
               through the in-app update checker.
             </p>
           </section>
 
-          {/* Termination */}
+          {/* Service Continuity */}
           <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">9. Termination</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">9. Service Continuity, Exit & Future Requests</h3>
             <p className="text-gray-700 leading-relaxed">
-              Access to this software may be terminated or suspended at any time by {APP_CONFIG.companyName} 
-              for any reason, including but not limited to violations of these terms, termination of employment, 
-              or security concerns.
+              If the developer resigns/leaves company employment, future enhancements, maintenance, updates,
+              or other requests are to be handled as paid service engagements through ASI Solution.
+              Service timelines, SLAs, and costs will be defined based on requested scope and active market conditions.
             </p>
           </section>
 
@@ -142,17 +127,16 @@ function TermsAndConditions() {
           <section>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">11. Contact Information</h3>
             <p className="text-gray-700 leading-relaxed">
-              For questions regarding these terms or to request modifications to the usage agreement, 
-              please contact {APP_CONFIG.companyName} management or the developer through official 
-              company channels.
+              For licensing, commercial deployment, maintenance contracts, hosting/backend plans, and support inquiries,
+              contact <strong>ASI Solution</strong> or the developer through official business channels.
             </p>
           </section>
 
           {/* Acceptance */}
           <section className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-gray-800 font-medium">
-              By using this software, you acknowledge that you have read, understood, and agree to be 
-              bound by these terms and conditions.
+              By using this software, you acknowledge that you have read, understood, and agree to be
+              bound by these terms and conditions, including commercial service/payment provisions.
             </p>
           </section>
         </div>

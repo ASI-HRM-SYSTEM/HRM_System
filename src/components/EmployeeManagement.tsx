@@ -122,20 +122,16 @@ function EmployeeManagement() {
   };
 
   const handleFormSubmit = async (employee: Employee) => {
-    try {
-      if (editingEmployee) {
-        await invoke("update_employee", { employee });
-      } else {
-        await invoke("create_employee", { employee });
-      }
-      setShowForm(false);
-      setEditingEmployee(null);
-      loadEmployees();
-      loadFilterOptions();
-    } catch (error) {
-      console.error("Failed to save employee:", error);
-      alert(`Failed to save employee: ${error}`);
+    if (editingEmployee) {
+      await invoke("update_employee", { employee });
+    } else {
+      await invoke("create_employee", { employee });
     }
+
+    setShowForm(false);
+    setEditingEmployee(null);
+    loadEmployees();
+    loadFilterOptions();
   };
 
   const handleFormCancel = () => {
@@ -267,6 +263,7 @@ function EmployeeManagement() {
           employee={editingEmployee}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
+          onViewEmployee={handleOpenProfile}
           departments={departments}
           transportRoutes={transportRoutes}
           policeAreas={policeAreas}
@@ -286,11 +283,11 @@ function EmployeeManagement() {
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="label">EPF Number</label>
+                <label className="label">Search Employee Data</label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="Search by EPF..."
+                  placeholder="EPF, NIC, name, phone, department..."
                   value={filters.epf_number}
                   onChange={(e) => handleFilterChange("epf_number", e.target.value)}
                 />

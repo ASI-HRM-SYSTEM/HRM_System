@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { CaderService } from "../services/CaderService";
 import type { TrainingLineDetail, SaveCaderReportRequest, DailyCaderReport as DailyCaderReportType } from "../types/employee";
 import { useAuth } from "../context/AuthContext";
+import { APP_CONFIG } from "../config/appConfig";
 
 const emptyForm = (): SaveCaderReportRequest => ({
     report_date: CaderService.todayString(),
@@ -54,8 +55,8 @@ function printCaderReport(report: SaveCaderReportRequest, date: string) {
   </style>
 </head>
 <body>
-  <h1>New Lanka Clothing (Pvt) Ltd</h1>
-  <div class="subtitle">Human Resource Management System</div>
+    <h1>${APP_CONFIG.companyName}</h1>
+    <div class="subtitle">${APP_CONFIG.name}</div>
   <div class="badge">📋 Daily Cader Report — ${date}</div>
   <div class="section">Main Cader</div>
   <div class="kpi-grid">
@@ -79,7 +80,7 @@ function printCaderReport(report: SaveCaderReportRequest, date: string) {
     <thead><tr><th>Line</th><th>Actual</th><th>Present</th><th>Absent</th><th>Absent %</th></tr></thead>
     <tbody>${tlRows}</tbody>
   </table>` : ""}
-  <div class="footer">Generated on ${new Date().toLocaleString("en-GB")} · HRM System – New Lanka Clothing (Pvt) Ltd</div>
+    <div class="footer">Generated on ${new Date().toLocaleString("en-GB")} · ${APP_CONFIG.name} – ${APP_CONFIG.companyName}</div>
 </body>
 </html>`;
 
